@@ -183,7 +183,6 @@ class Command(BaseCommand):
                     hook.join()
                 except Exception as err:
                     logging.error(f'failed to join all hooks --> {str(err)}')
-            self.update_progress(80)
 
             # Now generate the video links after all processing is complete
             credits_used = 0
@@ -205,7 +204,6 @@ class Command(BaseCommand):
                 logging.info(
                     f"Generated video link with file name: {row['Hook Video Filename']}"
                 )
-            self.update_progress(90)
 
             logging.info(f"Task {task_id} completed.")
             return video_links, credits_used
@@ -318,8 +316,6 @@ class Command(BaseCommand):
             logging.info(f"User credits reduced by {credits_used}. New credit balance: {user_sub.hooks}")
             updated_video_links = []
             percent_per_video=int(20/len(video_links))
-            # initial_value=70
-            # self.update_progress(initial_value)
 
             for video in video_links:
 
@@ -332,13 +328,6 @@ class Command(BaseCommand):
                         hook_video_link.video_file.save(video_file_name,file_content)
                 percent_per_video+=percent_per_video
 
-                    # s3_key = f"output_videos/{username}/{task_id}/{video_file_name}"
-                    # video_url = upload_to_s3(video_file_path, settings.AWS_STORAGE_BUCKET_NAME, s3_key)
-                    # updated_video_links.append({
-                    #     "file_name": video_file_name,
-                    #     "video_link": video_url
-                    # })  # appending each return url into updated_video_links llst
-            # task = Task.objects.get(task_id=task_id)
             
             self.update_progress(100)
             hook.status = 'completed'

@@ -526,6 +526,15 @@ def process_audio_on_videos(
   # Remove underscores from the hook text for display
   cleaned_hook_text = hook_text.replace('_', '')
   hook=Hook.objects.get(id=task_id)
+  addition=80/total_rows
+  initial_value=0
+  try:
+    initial_value=int(hook.progress)
+
+  except:
+    pass
+
+  
   row['Input Video Filename'] = [
     os.path.basename(considered_video) for considered_video in video_files
   ]
@@ -645,5 +654,7 @@ def process_audio_on_videos(
     codec='libx264',
     audio_codec="aac"
   )
+  if initial_value+addition <=100:
+    hook.track_progress(initial_value+addition)
 
   logging.info(f"Video processing completed successfully")
