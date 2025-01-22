@@ -50,18 +50,7 @@ class Command(BaseCommand):
     def update_progress(self,increase):
         self.hook.track_progress(increase)
     def process(self, params):
-        progress_lock = threading.Lock()
-        completed_tasks = 0
-        def update_task_progress(total_tasks):
-            nonlocal completed_tasks
-            with progress_lock:
-                completed_tasks += 1
-                progress_percentage = (completed_tasks / total_tasks) * 100
-                self.update_progress(progress_percentage)  # Call your progress update method
-                logging.info(f"Progress: {progress_percentage:.2f}%")
-
         task_id = params.get('task_id', self.hook.id)
-        # hook=self.hook
         initial_value=20
         self.update_progress(initial_value)
 
@@ -119,6 +108,7 @@ class Command(BaseCommand):
                     if f.endswith('.mp4') or f.endswith('.mov')
                 ]
             )
+            self.update_progress(25)
 
             for col in ["Hook Video Filename", "Input Video Filename", "Audio Filename",
                         "Voice"]:
@@ -143,6 +133,7 @@ class Command(BaseCommand):
                 logging.info('Audio proccessed successfully')
 
             current_thread_count = 0
+            self.update_progress(35)
 
 
             for idx, row in tqdm(input_df.iterrows(), total=total_rows,desc="Processing rows"):
@@ -190,9 +181,9 @@ class Command(BaseCommand):
             for hook in all_hooks:
                 try:
                     hook.join()
-                    update_task_progress(total_tasks)
                 except Exception as err:
                     logging.error(f'failed to join all hooks --> {str(err)}')
+            self.update_progress(80)
 
             # Now generate the video links after all processing is complete
             credits_used = 0
@@ -214,7 +205,7 @@ class Command(BaseCommand):
                 logging.info(
                     f"Generated video link with file name: {row['Hook Video Filename']}"
                 )
-            # self.update_progress(65)
+            self.update_progress(90)
 
             logging.info(f"Task {task_id} completed.")
             return video_links, credits_used
@@ -241,6 +232,8 @@ class Command(BaseCommand):
 
         top_box_color = hex_to_rgb(top_box_color_value)
         default_text_color = hex_to_rgb(main_box_color_value)
+        self.update_progress(5)
+
 
         if not video_file or not google_sheet_link or not voice_id or not api_key or not parallel_processing:
             return JsonResponse({"error": "Missing form data"})
@@ -267,6 +260,8 @@ class Command(BaseCommand):
         google_sheet_data = fetch_google_sheet_data(google_sheet_link)
         extract_word_color_data(google_sheet_link)
         input_df = pd.DataFrame(google_sheet_data)
+        self.update_progress(15)
+
         if input_df.empty or ('Hook Text' not in input_df.columns and input_df.shape[1] > 0):
             if input_df.shape[1] == 1:
                 input_df.columns = ['Hook Text']
