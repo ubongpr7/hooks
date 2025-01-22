@@ -17,6 +17,7 @@ from utils.utils import  ffprobe_get_frame_count, generate_presigned_url
 from .forms import VideoUploadForm
 from .models import LargeVideo, MergeTask, ShortVideo
 import tempfile
+import boto3
 from django.core.management import call_command
 
 
@@ -161,30 +162,37 @@ def processing_successful(request, task_id):
 
 @login_required
 def download_video(request):
-    """
-    Downloads a video from S3 using a pre-signed URL.
+    file_key = request.GET.get('videopath', None)
     
-    """
-    videopath = request.GET.get('videopath', None)
-    if not videopath:
-        return HttpResponse("No video path provided", status=400)
-    parsed_url = urlparse(videopath)
-    bucket_name = parsed_url.netloc.split('.')[0]
-    object_key = parsed_url.path.lstrip('/')
-    presigned_url = generate_presigned_url(bucket_name, object_key)
-    if not presigned_url:
-        return HttpResponse("Unable to generate download link", status=500)
+    s3 = boto3.client(
+        "s3",
+        aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+    )
+
+
     try:
-        response = requests.get(presigned_url, stream=True)
-        if response.status_code == 200:
-            content_type = response.headers.get('Content-Type', 'application/octet-stream')
-            response_stream = HttpResponse(response.iter_content(chunk_size=1024), content_type=content_type)
-            response_stream['Content-Disposition'] = f'attachment; filename="{os.path.basename(object_key)}"'
-            return response_stream
-        else:
-            return HttpResponse("Failed to download video from S3", status=response.status_code)
-    except Exception as e:
-        return HttpResponse(f"Error while downloading the file: {str(e)}", status=500)   
+        # Get the file from S3
+        s3_response = s3.get_object(
+            Bucket=settings.AWS_STORAGE_BUCKET_NAME, Key=file_key
+        )
+        print('===========>',file_key)
+        # Set the appropriate headers for file download
+        response = HttpResponse(
+            s3_response["Body"].read(), content_type=s3_response["ContentType"]
+        )
+      
+        response["Content-Disposition"] = (
+              f'attachment; filename="{file_key.split("/")[-1]}"'
+          )
+        response["Content-Length"] = s3_response["ContentLength"]
+
+        return response
+    except s3.exceptions.NoSuchKey:
+        return HttpResponse("File not found.", status=404)
+    except :
+        return HttpResponse("Credentials not available.", status=403)
+
 
 
 @login_required

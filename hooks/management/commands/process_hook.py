@@ -52,9 +52,7 @@ class Command(BaseCommand):
     def process(self, params):
         progress_lock = threading.Lock()
         completed_tasks = 0
-        all_hooks = []  
-        total_tasks = 1
-        def update_task_progress():
+        def update_task_progress(total_tasks):
             nonlocal completed_tasks
             with progress_lock:
                 completed_tasks += 1
@@ -192,7 +190,7 @@ class Command(BaseCommand):
             for hook in all_hooks:
                 try:
                     hook.join()
-                    update_task_progress()
+                    update_task_progress(total_tasks)
                 except Exception as err:
                     logging.error(f'failed to join all hooks --> {str(err)}')
 
