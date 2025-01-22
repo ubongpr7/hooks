@@ -46,8 +46,8 @@ COPY ./policy.xml /etc/ImageMagick-6/policy.xml
 RUN sed -i 's/<policy domain="path" rights="none" pattern="@\*"/<!--<policy domain="path" rights="none" pattern="@\*"-->/' /etc/ImageMagick-6/policy.xml || true \
     && sed -i 's/<policy domain="path" rights="none" pattern="@\*"/<!--<policy domain="path" rights="none" pattern="@\*"-->/' /etc/ImageMagick-7/policy.xml || true
 
-    COPY ./fonts /usr/share/fonts/custom
-RUN fc-cache -f -v
+#     COPY ./fonts /usr/share/fonts/custom
+# RUN fc-cache -f -v
 
 
 EXPOSE 7777
