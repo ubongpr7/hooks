@@ -1,64 +1,54 @@
-FROM python:3.11-slim
+FROM python:3.10-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV IMAGEMAGICK_BINARY=/usr/bin/convert
 
+RUN apt update
+RUN apt -y install \
+  wget \
+  build-essential \
+  libssl* \
+  libffi-dev \
+  libespeak-dev \
+  zlib1g-dev \
+  libmupdf-dev \
+  libfreetype6-dev \
+  ffmpeg \
+  espeak \
+  imagemagick \
+  git \
+  postgresql \
+  postgresql-contrib \
+  libfreetype6 \
+  libfontconfig1 \
+  fonts-liberation
+
+RUN wget https://www.python.org/ftp/python/3.10.14/Python-3.10.14.tgz
+RUN tar -xzvf Python-3.10.14.tgz
+RUN cd Python-3.10.14
+WORKDIR Python-3.10.14
+RUN ./configure --enable-optimizations --with-system-ffi
+RUN make -j 16
+RUN make altinstall
+
 WORKDIR /app
 
-RUN apt-get update && \
-    apt-get install -y \
-    gcc \
-    ca-certificates \
-    ffmpeg \
-    fontconfig \
-    imagemagick \
-    libbz2-1.0 \
-    libc6  \
-    libcairo2-dev \
-    libcom-err2 \
-    libcrypt1 \
-    libdb5.3 \
-    libexpat1 \
-    libffi8 \
-    libgdbm6 \
-    libgssapi-krb5-2 \
-    libjpeg-dev \
-    libk5crypto3 \
-    libkeyutils1 \
-    libkrb5-3 \
-    libkrb5support0 \
-    liblzma5 \
-    libncursesw6 \
-    libnsl2 \
-    libpango1.0-dev \
-    libreadline8 \
-    libsqlite3-0 \
-    libssl3 \
-    libtinfo6 \
-    libtirpc3 \
-    libuuid1 \
-    make \
-    netbase \
-    tzdata \
-    vim \
-    zlib1g \
-    zlib1g-dev && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-
-RUN pip install --no-cache-dir virtualenv
-RUN python -m virtualenv /app/venv
-ENV PATH="/app/venv/bin:$PATH"
-
 COPY ./requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
+RUN pip3.10 install numpy
+RUN pip3.10 install --no-cache-dir -r requirements.txt
 
 COPY . .
+COPY .env /app/.env
 
 COPY ./policy.xml /etc/ImageMagick-6/policy.xml
-RUN sed -i 's/<policy domain="path" rights="none" pattern="@\*"/<!--<policy domain="path" rights="none" pattern="@\*"-->/' /etc/ImageMagick-6/policy.xml || true
+RUN sed -i 's/<policy domain="path" rights="none" pattern="@\*"/<!--<policy domain="path" rights="none" pattern="@\*"-->/' /etc/ImageMagick-6/policy.xml || true \
+    && sed -i 's/<policy domain="path" rights="none" pattern="@\*"/<!--<policy domain="path" rights="none" pattern="@\*"-->/' /etc/ImageMagick-7/policy.xml || true
+
+    COPY ./fonts /usr/share/fonts/custom
+RUN fc-cache -f -v
+
+
 EXPOSE 7777
-CMD ["bash", "-c", "python manage.py migrate && python manage.py runserver 0.0.0.0:7777"]
+CMD ["bash", "-c", "export $(cat /app/.env | xargs) && python3.10 manage.py migrate && python3.10 manage.py runserver 0.0.0.0:7777"]
