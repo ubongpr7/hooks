@@ -1,0 +1,17 @@
+services:
+  web:
+    image: ubongpr7/hooks:latest
+    env_file:
+      - .env
+    command: >
+      sh -c "
+        python3.10 manage.py makemigrations &&
+        python3.10 manage.py migrate &&
+        python3.10 manage.py runserver 0.0.0.0:7777
+      "
+    volumes:
+      - .:/app
+    ports:
+      - "7777:7777"
+    
+ 
