@@ -18,6 +18,9 @@
           href="{% static 'assets/favicon.svg' %}" />
 
     <style>
+      #progress{
+        display: inline;
+      }
       .admin-header {
         font-family: 'Plus Jakarta Sans', sans-serif;
       }
@@ -198,7 +201,7 @@
               // Redirect to the success page once processing is complete
               window.location.href = "{% url 'hooks:processing_successful' task_id=task_id %}";
             }else if(response.progress){
-              document.getElementById('progress').textContent=response.progress
+              document.getElementById('progress').textContent=`${response.progress}%`
             }
              else {
               console.log("Processing is still in progress. Please wait...");
