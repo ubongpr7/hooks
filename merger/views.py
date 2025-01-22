@@ -126,7 +126,8 @@ def get_progress(request, task_id):
         progress = 0
     else:
         progress = int(min(1, (merge_task.total_frames_done / merge_task.total_frames)) * 100)
-
+        if progress >90 and merge_task.status !='completed':
+            progress=90
     return JsonResponse({'progress': progress})
 
 
