@@ -1,6 +1,6 @@
 services:
   web:
-    image: ubongpr7/hooks:latest
+    image: nas415/hooks:latest
     env_file:
       - .env
     command: >
