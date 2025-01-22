@@ -51,8 +51,6 @@ class Command(BaseCommand):
         self.hook.track_progress(increase)
     def process(self, params):
         task_id = params.get('task_id', self.hook.id)
-        initial_value=20
-        self.update_progress(initial_value)
 
         try:
             input_df = params['input_df']
@@ -108,7 +106,6 @@ class Command(BaseCommand):
                     if f.endswith('.mp4') or f.endswith('.mov')
                 ]
             )
-            self.update_progress(25)
 
             for col in ["Hook Video Filename", "Input Video Filename", "Audio Filename",
                         "Voice"]:
@@ -133,9 +130,8 @@ class Command(BaseCommand):
                 logging.info('Audio proccessed successfully')
 
             current_thread_count = 0
-            self.update_progress(35)
 
-
+            self.update_progress(20)
             for idx, row in tqdm(input_df.iterrows(), total=total_rows,desc="Processing rows"):
                 hook_text = row['Hook Text']
                 hook_number = idx + 1
@@ -289,7 +285,6 @@ class Command(BaseCommand):
             "aspect_ratio": aspect_ratio,
         }
         cache.set(f"{hook_object.id}", temp_dir, timeout=600)
-        self.update_progress(20)
 
         video_links, credits_used = self.process(params)
         return video_links, credits_used
