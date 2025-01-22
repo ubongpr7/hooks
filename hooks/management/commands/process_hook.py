@@ -173,7 +173,6 @@ class Command(BaseCommand):
                         hook.join()
                     all_hooks.clear()
                     current_thread_count = 0
-            total_tasks = len(all_hooks)
             for hook in all_hooks:
                 try:
                     hook.join()
@@ -310,7 +309,6 @@ class Command(BaseCommand):
             user_sub.save()
             logging.info(f"User credits reduced by {credits_used}. New credit balance: {user_sub.hooks}")
             updated_video_links = []
-            percent_per_video=int(20/len(video_links))
 
             for video in video_links:
 
@@ -321,7 +319,6 @@ class Command(BaseCommand):
                         file_content = File(f)
                         hook_video_link =HookVideoLink.objects.create(hook=hook)
                         hook_video_link.video_file.save(video_file_name,file_content)
-                percent_per_video+=percent_per_video
 
             
             self.update_progress(100)

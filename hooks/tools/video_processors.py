@@ -527,7 +527,7 @@ def process_audio_on_videos(
   cleaned_hook_text = hook_text.replace('_', '')
   hook=Hook.objects.get(id=task_id)
   
-  addition=80/total_rows
+  addition=int(80/total_rows)
   initial_value=0
   try:
     initial_value=int(hook.progress)
