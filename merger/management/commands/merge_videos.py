@@ -500,6 +500,10 @@ class Command(BaseCommand):
                     for future in futures:
                         try:
                             future.result()
+                        except FileNotFoundError as e:
+                            logging.error(f"Error during preprocessing: {e}")
+                            merge_task.track_progress(0)
+                            return self.preprocess_video()
                         except Exception as e:
                             logging.error(f"Error during preprocessing: {e}")
                             merge_task.status = 'failed'
