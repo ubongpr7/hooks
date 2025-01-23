@@ -525,13 +525,27 @@ class Command(BaseCommand):
                             # short_base = os.path.splitext(os.path.basename(sname))[0].replace('preprocessed_', '')
                             final_output_name = f"{sname}_{large_name}.mp4"
 
-                            temp_file = tempfile.NamedTemporaryFile(dir=temp_dir, delete=False, suffix=".mp4")
-                            temp_file.close()
-                            final_output = temp_file.name
+                            # temp_file = tempfile.NamedTemporaryFile(dir=temp_dir, delete=False, suffix=".mp4")
+                            # temp_file.close()
+                            # final_output = temp_file.name
 
-                            concat_futures.append(
-                                executor.submit(self.concatenate_videos, [short_file, large_video], final_output, merge_task,final_output_name,per_vid)
-                            )
+                            # concat_futures.append(
+                            #     executor.submit(self.concatenate_videos, [short_file, large_video], final_output, merge_task,final_output_name,per_vid)
+                            # )
+                            with tempfile.NamedTemporaryFile(dir=temp_dir, delete=False, suffix=".mp4") as temp_file:
+                                final_output = temp_file.name
+
+                                logging.info(f"Submitting task for: {short_file} + {large_video} -> {final_output_name}")
+                                concat_futures.append(
+                                    executor.submit(
+                                        self.concatenate_videos,
+                                        [short_file, large_video],
+                                        final_output,
+                                        merge_task,
+                                        final_output_name,
+                                        per_vid,
+                                    )
+                                )
                             
                     for future in concat_futures:
                         try:
