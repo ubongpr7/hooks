@@ -541,6 +541,8 @@ class Command(BaseCommand):
                             merge_task.status = 'failed'
                             merge_task.save()
                             return
+            import time
+            time.sleep(7)
 
             logging.info("Video processing complete!")
             merge_task.status = 'completed'
