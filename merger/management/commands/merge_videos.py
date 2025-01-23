@@ -469,7 +469,7 @@ class Command(BaseCommand):
         If the input video lacks an audio stream, adds a silent audio track.
         """
         merge_task = self.merge_task
-        input_file = video.url
+        input_file = video.video_file.url
         logging.info(f"Preprocessing video: {input_file}")
 
         input_has_audio = self.has_audio(input_file)
