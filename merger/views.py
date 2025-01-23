@@ -126,7 +126,7 @@ def get_progress(request, task_id):
         progress = 0
     else:
         progress = int((min(1, (merge_task.total_frames_done / merge_task.total_frames)) * 100)/2)
-        if progress >50:
+        if progress >49:
             try:
                 progress= int(merge_task.progress)
                 if progress> 99:
