@@ -30,7 +30,7 @@ class MergeTask(models.Model):
         if self.total_frames >0:
             frame_per=(self.total_frames_done/self.total_frames)*100
             if frame_per<97:
-                frame_per=50
+                frame_per=97
             self.progress=str(int(frame_per))
 
         #     if self.percent_done<50 :
