@@ -556,7 +556,7 @@ class Command(BaseCommand):
                             merge_task.save()
                             return
                 
-                logging.info(f"preprocessed_large_files: {len(preprocessed_short_files)}")
+                logging.info(f"preprocessed_large_files: {len(preprocessed_short_files)} and concat_futures: {len(concat_futures)}")
 
             logging.info("Video processing complete!")
             merge_task.status = 'completed'
