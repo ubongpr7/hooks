@@ -83,6 +83,7 @@ def processing(request, task_id):
     try:
         merge_task = MergeTask.objects.get(id=task_id)
         merge_task.total_frames_done=0
+        merge_task.status='processing'
         merge_task.save()
         if merge_task.video_links.all():
             for link in merge_task.video_links.all():
