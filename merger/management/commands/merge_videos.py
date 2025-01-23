@@ -299,6 +299,10 @@ class Command(BaseCommand):
         """
         Concatenates multiple video files into a single output file using FFmpeg's concat filter.
         """
+        
+        link = VideoLinks.objects.create(
+            merge_task=merge_task
+        )
         merge_task=self.merge_task
         input_files=[video.processed_file.url,merge_task.large_videos.all()[0].processed_file.url]
         final_output_name = f"{os.path.splitext(video.video_file.name.split('/')[-1])[0]}_{os.path.splitext(merge_task.large_videos.all()[0].video_file.name.split('/')[-1])[0]}.mp4"
@@ -378,9 +382,6 @@ class Command(BaseCommand):
                 with open(output_file, "rb") as output_video_file:
                     file_content = output_video_file.read()
 
-                    link = VideoLinks.objects.create(
-                        merge_task=merge_task
-                    )
                     link.video_file.save(final_output_name, ContentFile(file_content))
 
 
