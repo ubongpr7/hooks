@@ -42,6 +42,7 @@ class Command(BaseCommand):
         ref_resolution = self.check_video_format_resolution(large_video_files_urls[0])
         short_videos=self.merge_task.short_videos.all()
         large_videos=self.merge_task.large_videos.all()
+        short_videos.append(large_videos[0])
 
 
         if not ref_resolution or not ref_resolution[0] or not ref_resolution[1]:
@@ -74,7 +75,6 @@ class Command(BaseCommand):
             for future in as_completed(large_preprocess_futures):
                 future.result()  # Wait for all large videos to finish preprocessing
 
-        # Concatenate short videos in parallel
         with ThreadPoolExecutor() as executor:
             short_concat_futures = [
                 executor.submit(self.concatenate_videos, video, per_vid)
@@ -404,12 +404,21 @@ class Command(BaseCommand):
             time.sleep(5)
             logging.info(f"Finished concatenating: {output_file}")
             merge_task.track_progress(per_vid)
+    def delete_processing_files(self, video):
+        try:
+            if video.processed_file:
+                # Log the file being deleted
+                logging.info(f"Attempting to delete processed file: {video.processed_file.name}")
+                video.processed_file.delete(save=True)
+                # Log success
+                logging.info(f"Successfully deleted processed file: {video.processed_file.name}")
+            else:
+                # Log when no file exists
+                logging.warning(f"No processed file found for video: {video}")
+        except Exception as e:
+            # Log errors
+            logging.error(f"Error while deleting processed file for video: {video}. Error: {e}")
 
-    def delete_processong_files(self,video):
-        if video.processed_file:
-            video.processed_file.delete(save=True)
-
-            
     def preprocess_video(self, video, reference_resolution=None):
         """
         Preprocesses a video by scaling it to the reference resolution and ensuring consistent encoding.
