@@ -184,6 +184,7 @@ class Command(BaseCommand):
                     if frames_processed - prev_frames_processed >= 150:
                         if merge_task:
                             merge_task.total_frames_done += (frames_processed - prev_frames_processed)
+                            merge_task.merge_task(0)
                             merge_task.save()
                         prev_frames_processed = frames_processed
                         
