@@ -68,5 +68,5 @@ class VideoLinks(models.Model):
         super().delete(*args, **kwargs)
     def Video_link_name(self):
         if self.video_file:
-           return {'video_link': self.video_file.name,'file_name':self.video_file.name.split("/")[-1][:15]} 
+           return {'video_link': self.video_file.name,'file_name':self.video_file.name.split("/")[-1][:30]} 
         return
