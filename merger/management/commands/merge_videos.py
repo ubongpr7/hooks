@@ -30,7 +30,6 @@ class Command(BaseCommand):
         task_id = kwargs["task_id"]
         self.merge_task= MergeTask.objects.get(id=task_id)
         merge_task=self.merge_task
-        processing=self.process_videos()
         short_video_files_urls = [video.video_file.url for video in self.merge_task.short_videos.all()]
         large_video_files_urls = [video.video_file.url for video in self.merge_task.large_videos.all()]
         if not large_video_files_urls:
@@ -40,7 +39,6 @@ class Command(BaseCommand):
             return
 
         ref_resolution = self.check_video_format_resolution(large_video_files_urls[0])
-        # self.preprocess_video
         short_videos=self.merge_task.short_videos.all()
         large_videos=self.merge_task.large_videos.all()
 
