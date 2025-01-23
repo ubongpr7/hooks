@@ -80,3 +80,5 @@ class VideoLinks(models.Model):
         if self.video_file:
            return {'video_link': self.video_file.name,'file_name':self.video_file.name.split("/")[-1][:30]} 
         return
+    def __str__(self):
+        return f"{self.merge_task}"
