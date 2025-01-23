@@ -14,7 +14,7 @@ from merger.models import MergeTask, VideoLinks
 import logging
 import os
 import tempfile
-from joblib import Parallel, delayed
+
 logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s"
 )
@@ -49,15 +49,14 @@ class Command(BaseCommand):
             self.merge_task.save()
             return
         reference_resolution = ref_resolution
-        Parallel(n_jobs=len(short_videos))(
-                delayed(self.preprocess_video)(video, reference_resolution) for video in short_videos
-            )
-        Parallel(n_jobs=1)(
-                delayed(self.preprocess_video)(video, reference_resolution) for video in large_videos
-            )
-        Parallel(n_jobs=3)(
-                delayed(self.concatenate_videos)(video, reference_resolution) for video in short_videos
-            )
+        for video in large_videos:
+            self.preprocess_video(video,reference_resolution)
+        for video in short_videos:
+            self.preprocess_video(video,reference_resolution)
+        per_vid=50/len(short_videos)
+        for video in short_videos:
+            self.concatenate_videos(video,per_vid)
+
         # with ThreadPoolExecutor() as executor:
         #         short_preprocess_futures = [
         #             executor.submit(self.preprocess_video, video, reference_resolution)
@@ -383,7 +382,7 @@ class Command(BaseCommand):
             import time
             # time.sleep(25)
             logging.info(f"Finished concatenating: {output_file}")
-            merge_task.track_progress(0)
+            merge_task.track_progress(per_vid)
 
     
             
