@@ -368,7 +368,7 @@ class Command(BaseCommand):
                         merge_task=merge_task
                     )
                     link.video_file.save(final_output_name, file_content)
-                    merge_task.track_progress(per_vid)
+                    # merge_task.track_progress(per_vid)
 
             import time
             # time.sleep(25)

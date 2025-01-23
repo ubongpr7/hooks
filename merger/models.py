@@ -26,13 +26,16 @@ class MergeTask(models.Model):
     
     total_frames = models.IntegerField(default=0)
     def track_progress(self, increase):
-        frame_per=0
-        if self.percent_done<50 and self.percent_done +increase<50:
-            self.percent_done +=increase
-            if self.total_frames >0:
-                frame_per=(self.total_frames_done/self.total_frames)*50
+        # frame_per=0
+        if self.total_frames >0:
+            frame_per=(self.total_frames_done/self.total_frames)*50
+            if self.percent_done<50 :
+                self.percent_done =frame_per
                 if frame_per+self.percent_done<99:
-                    self.progress=str(int(frame_per+self.percent_done))
+                        self.progress=str(int(self.percent_done))
+            else:
+                self.progress=str(int(frame_per+self.percent_done))
+
         self.save()
 
 
