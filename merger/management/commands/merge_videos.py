@@ -506,6 +506,8 @@ class Command(BaseCommand):
                             merge_task.save()
                             return
                 final_output_files = []
+                per_vid=int(50/len(short_video_names))
+
                 with ThreadPoolExecutor() as executor:
                     concat_futures = []
                     for large_video, large_name in zip(preprocessed_large_files, large_video_names):
@@ -522,10 +524,15 @@ class Command(BaseCommand):
                             concat_futures.append(
                                 executor.submit(self.concatenate_videos, [short_file, large_video], final_output, merge_task)
                             )
-                            final_output_files.append({
-                                'video_link': final_output,
-                                'file_name': final_output_name
-                            })
+                            
+                            if final_output:
+                                with open(final_output, 'rb') as f:
+                                    file_content = File(f)
+                                    link = VideoLinks.objects.create(
+                                        merge_task=merge_task
+                                    )
+                                    link.video_file.save(final_output_name, file_content)
+                                    merge_task.track_progress(per_vid)
 
                     for future in concat_futures:
                         try:
@@ -536,20 +543,6 @@ class Command(BaseCommand):
                             merge_task.save()
                             return
 
-                # Save video links to the database
-                merge_task.track_progress(50)
-                per_vid=int(50/len(final_output_files))
-                for video in final_output_files:
-                    video_file_path = video.get('video_link')
-                    video_file_name = video.get('file_name')
-                    if video_file_path:
-                        with open(video_file_path, 'rb') as f:
-                            file_content = File(f)
-                            link = VideoLinks.objects.create(
-                                merge_task=merge_task
-                            )
-                            link.video_file.save(video_file_name, file_content)
-                            merge_task.track_progress(int(int(merge_task.progress)+ per_vid))
             logging.info("Video processing complete!")
             merge_task.status = 'completed'
             merge_task.save()

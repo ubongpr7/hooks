@@ -122,17 +122,7 @@ def get_progress(request, task_id):
     Returns the progress of the video processing task.
     """
     merge_task = get_object_or_404(MergeTask, id=task_id)
-    if merge_task.total_frames == 0:
-        progress = 0
-    else:
-        progress = int((min(1, (merge_task.total_frames_done / merge_task.total_frames)) * 100)/2)
-        if progress >49:
-            try:
-                progress= int(merge_task.progress)
-                if progress> 99:
-                    progress=99
-            except:
-                progress=50
+    progress=int(merge_task.progress)
     return JsonResponse({'progress': progress})
 
 
