@@ -20,6 +20,9 @@ class MergeTask(models.Model):
     progress = models.CharField(max_length=20, default='0')
     total_frames_done = models.IntegerField(default=0)
     total_frames = models.IntegerField(default=0)
+    def track_progress(self, increase):
+        self.progress = str(increase)
+        self.save()
 
     def __str__(self) -> str:
         return self.status

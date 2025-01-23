@@ -486,7 +486,7 @@ class Command(BaseCommand):
 
                 with ThreadPoolExecutor() as executor:
                     for video in large_video_files:
-                        large_name = os.path.splitext(os.path.basename(video))[0]
+                        # large_name = os.path.splitext(os.path.basename(video))[0]
                         # large_video_names.append(large_name)
 
                         temp_file = tempfile.NamedTemporaryFile(dir=temp_dir, delete=False, suffix=".mp4")
@@ -537,6 +537,8 @@ class Command(BaseCommand):
                             return
 
                 # Save video links to the database
+                merge_task.track_progress(50)
+                per_vid=int(50/len(final_output_files))
                 for video in final_output_files:
                     video_file_path = video.get('video_link')
                     video_file_name = video.get('file_name')
@@ -547,7 +549,7 @@ class Command(BaseCommand):
                                 merge_task=merge_task
                             )
                             link.video_file.save(video_file_name, file_content)
-
+                            merge_task.track_progress(int(int(merge_task.progress)+ per_vid))
             logging.info("Video processing complete!")
             merge_task.status = 'completed'
             merge_task.save()

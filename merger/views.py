@@ -129,6 +129,8 @@ def get_progress(request, task_id):
         if progress >50:
             try:
                 progress= int(merge_task.progress)
+                if progress> 99:
+                    progress=99
             except:
                 progress=50
     return JsonResponse({'progress': progress})
