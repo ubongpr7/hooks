@@ -403,9 +403,24 @@ class Command(BaseCommand):
         except Exception as e:
             print(f"Error downloading the file: {e}")
 
-    def get_file_names(self, files):
-        return [file.split("/")[-1][:15] for file in files]
 
+
+    def get_file_names(self,s3_urls):
+        """
+        Extracts meaningful names from a list of S3 keys or URLs.
+
+        Args:
+            s3_urls (list): List of S3 URLs or keys.
+
+        Returns:
+            list: List of extracted names without extensions.
+        """
+        names = []
+        for s3_url in s3_urls:
+            parsed_url = urlparse(s3_url)
+            filename = os.path.basename(parsed_url.path)  
+            names.append(os.path.splitext(filename)[0])  
+        return names
 
 
     def process_videos(self):
@@ -438,14 +453,14 @@ class Command(BaseCommand):
             # Use a temporary directory for output files
             with tempfile.TemporaryDirectory() as temp_dir:
                 preprocessed_short_files = []
-                short_video_names = []
+                short_video_names = self.get_file_names(short_video_files)
                 futures = []
 
                 # Preprocess short videos
                 with ThreadPoolExecutor() as executor:
                     for video in short_video_files:
-                        short_name = os.path.splitext(os.path.basename(video))[0]
-                        short_video_names.append(short_name)
+                        # short_name = os.path.splitext(os.path.basename(video))[0]
+                        # short_video_names.append(short_name)
 
                         temp_file = tempfile.NamedTemporaryFile(dir=temp_dir, delete=False, suffix=".mp4")
                         temp_file.close()
@@ -466,13 +481,13 @@ class Command(BaseCommand):
 
                 # Preprocess large videos
                 preprocessed_large_files = []
-                large_video_names = []
+                large_video_names = self.get_file_names(large_video_files)
                 futures = []
 
                 with ThreadPoolExecutor() as executor:
                     for video in large_video_files:
                         large_name = os.path.splitext(os.path.basename(video))[0]
-                        large_video_names.append(large_name)
+                        # large_video_names.append(large_name)
 
                         temp_file = tempfile.NamedTemporaryFile(dir=temp_dir, delete=False, suffix=".mp4")
                         temp_file.close()

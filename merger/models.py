@@ -17,6 +17,7 @@ def large_videos(instance, filename):
 class MergeTask(models.Model):
     user=models.ForeignKey('account.User', on_delete=models.CASCADE,null=True)
     status = models.CharField(max_length=20, default='processing')
+    progress = models.CharField(max_length=20, default='0')
     total_frames_done = models.IntegerField(default=0)
     total_frames = models.IntegerField(default=0)
 
