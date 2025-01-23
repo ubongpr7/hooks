@@ -14,6 +14,7 @@ from merger.models import MergeTask, VideoLinks
 import logging
 import os
 import tempfile
+from django.core.files.base import ContentFile
 
 logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -49,13 +50,39 @@ class Command(BaseCommand):
             self.merge_task.save()
             return
         reference_resolution = ref_resolution
-        for video in large_videos:
-            self.preprocess_video(video,reference_resolution)
-        for video in short_videos:
-            self.preprocess_video(video,reference_resolution)
         per_vid=50/len(short_videos)
-        for video in short_videos:
-            self.concatenate_videos(video,per_vid)
+        # for video in large_videos:
+        #     self.preprocess_video(video,reference_resolution)
+        # for video in short_videos:
+        #     self.preprocess_video(video,reference_resolution)
+        # for video in short_videos:
+        #     self.concatenate_videos(video,per_vid)
+        with ThreadPoolExecutor() as executor:
+            short_preprocess_futures = [
+                executor.submit(self.preprocess_video, video, reference_resolution)
+                for video in short_videos
+            ]
+            for future in as_completed(short_preprocess_futures):
+                future.result()  # Wait for all short videos to finish preprocessing
+
+    # Preprocess large videos in parallel
+        with ThreadPoolExecutor() as executor:
+            large_preprocess_futures = [
+                executor.submit(self.preprocess_video, video, reference_resolution)
+                for video in large_videos
+            ]
+            for future in as_completed(large_preprocess_futures):
+                future.result()  # Wait for all large videos to finish preprocessing
+
+        # Concatenate short videos in parallel
+        with ThreadPoolExecutor() as executor:
+            short_concat_futures = [
+                executor.submit(self.concatenate_videos, video, per_vid)
+                for video in short_videos
+            ]
+            for future in as_completed(short_concat_futures):
+                future.result()  # Wait for all short videos to finish concatenation
+
 
         self.merge_task.status='completed'
         self.merge_task.save()
@@ -348,17 +375,17 @@ class Command(BaseCommand):
                 merge_task.save()
                 
             if output_file:
-                with open(output_file, 'rb') as f:
-                    file_content = File(f)
+                with open(output_file, "rb") as output_video_file:
+                    file_content = output_video_file.read()
+
                     link = VideoLinks.objects.create(
                         merge_task=merge_task
                     )
-                    link.video_file.save(final_output_name, file_content)
-                    # merge_task.track_progress(per_vid)
+                    link.video_file.save(final_output_name, ContentFile(file_content))
 
 
             import time
-            # time.sleep(25)
+            time.sleep(5)
             logging.info(f"Finished concatenating: {output_file}")
             merge_task.track_progress(per_vid)
 
@@ -456,8 +483,12 @@ class Command(BaseCommand):
                 merge_task.save()
 
             # Save the output file to the processed_file field of the video object
-            with open(output_file, 'rb') as file_data:
-                video.processed_file.save(f"processed_{os.path.basename(output_file)}", file_data)
+            with open(output_file, "rb") as output_video_file:
+                file_content = output_video_file.read()
+                video.processed_file.save(f"processed_{os.path.basename(output_file)}", ContentFile(file_content))
+
+            # with open(output_file, 'rb') as file_data:
+            #     video.processed_file.save(f"processed_{os.path.basename(output_file)}", file_data)
             
             # Cleanup temporary file
             os.remove(output_file)
