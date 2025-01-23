@@ -453,14 +453,14 @@ class Command(BaseCommand):
             # Use a temporary directory for output files
             with tempfile.TemporaryDirectory() as temp_dir:
                 preprocessed_short_files = []
-                short_video_names = self.get_file_names(short_video_files)
+                short_video_names = []
                 futures = []
 
                 # Preprocess short videos
                 with ThreadPoolExecutor() as executor:
                     for video in short_video_files:
-                        # short_name = os.path.splitext(os.path.basename(video))[0]
-                        # short_video_names.append(short_name)
+                        short_name = os.path.splitext(os.path.basename(video))[0]
+                        short_video_names.append(short_name)
 
                         temp_file = tempfile.NamedTemporaryFile(dir=temp_dir, delete=False, suffix=".mp4")
                         temp_file.close()
@@ -481,13 +481,13 @@ class Command(BaseCommand):
 
                 # Preprocess large videos
                 preprocessed_large_files = []
-                large_video_names = self.get_file_names(large_video_files)
+                large_video_names = []
                 futures = []
 
                 with ThreadPoolExecutor() as executor:
                     for video in large_video_files:
-                        # large_name = os.path.splitext(os.path.basename(video))[0]
-                        # large_video_names.append(large_name)
+                        large_name = os.path.splitext(os.path.basename(video))[0]
+                        large_video_names.append(large_name)
 
                         temp_file = tempfile.NamedTemporaryFile(dir=temp_dir, delete=False, suffix=".mp4")
                         temp_file.close()
@@ -511,6 +511,8 @@ class Command(BaseCommand):
                             return
 
                 final_output_files = []
+                # large_video_names = self.get_file_names(large_video_files)
+
                 with ThreadPoolExecutor() as executor:
                     concat_futures = []
                     for large_video, large_name in zip(preprocessed_large_files, large_video_names):
@@ -557,8 +559,12 @@ class Command(BaseCommand):
             logging.info("Video processing complete!")
             merge_task.status = 'completed'
             merge_task.save()
-
+        except FileNotFoundError as e:
+            logging.error(f" FileNotFoundError Error during preprocessing: {e}")
+            merge_task.track_progress(0)
+            return self.preprocess_video()
         except Exception as e:
+
             logging.error(f"An error occurred during video processing: {e}")
             merge_task.status = 'failed'
             merge_task.save()
