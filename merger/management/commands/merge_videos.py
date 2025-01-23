@@ -84,14 +84,14 @@ class Command(BaseCommand):
 
         with ThreadPoolExecutor() as executor:
             short_delete_futures = [
-                executor.submit(self.delete_processong_files, video)
+                executor.submit(self.delete_processing_files, video)
                 for video in short_videos
             ]
             for future in as_completed(short_delete_futures):
                 future.result() 
         with ThreadPoolExecutor() as executor:
             large_delete_futures = [
-                executor.submit(self.delete_processong_files, video)
+                executor.submit(self.delete_processing_files, video)
                 for video in large_videos
             ]
             for future in as_completed(large_delete_futures):
@@ -479,7 +479,7 @@ class Command(BaseCommand):
                             os.remove(output_file)
                             logging.info(f"Removed invalid concatenated file: {output_file}")
                         # Retry concatenation on failure
-                        # raise FileNotFoundError("File not found during FFmpeg processing.")
+                        raise FileNotFoundError("File not found during FFmpeg processing.")
 
                     if merge_task:
                         merge_task.total_frames_done += (frames_processed - prev_frames_processed)
