@@ -81,7 +81,22 @@ class Command(BaseCommand):
                 for video in short_videos
             ]
             for future in as_completed(short_concat_futures):
-                future.result()  # Wait for all short videos to finish concatenation
+                future.result() 
+
+        with ThreadPoolExecutor() as executor:
+            short_delete_futures = [
+                executor.submit(self.delete_processong_files, video)
+                for video in short_videos
+            ]
+            for future in as_completed(short_delete_futures):
+                future.result() 
+        with ThreadPoolExecutor() as executor:
+            large_delete_futures = [
+                executor.submit(self.delete_processong_files, video)
+                for video in large_videos
+            ]
+            for future in as_completed(large_delete_futures):
+                future.result() 
 
 
         self.merge_task.status='completed'
@@ -390,7 +405,10 @@ class Command(BaseCommand):
             logging.info(f"Finished concatenating: {output_file}")
             merge_task.track_progress(per_vid)
 
-    
+    def delete_processong_files(self,video):
+        if video.processed_file:
+            video.processed_file.delete(save=True)
+
             
     def preprocess_video(self, video, reference_resolution=None):
         """
