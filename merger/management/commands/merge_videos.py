@@ -497,16 +497,16 @@ class Command(BaseCommand):
 
                 with ThreadPoolExecutor() as executor:
                     for video in large_video_files:
-                        # large_name = os.path.splitext(os.path.basename(video))[0]
-                        # large_video_names.append(large_name)
+                        with tempfile.NamedTemporaryFile(dir=temp_dir, delete=False, suffix=".mp4") as temp_file:
+                            final_output = temp_file.name
 
-                        temp_file = tempfile.NamedTemporaryFile(dir=temp_dir, delete=False, suffix=".mp4")
-                        temp_file.close()
-                        output_file = temp_file.name
+                        # temp_file = tempfile.NamedTemporaryFile(dir=temp_dir, delete=False, suffix=".mp4")
+                            temp_file.close()
+                            output_file = temp_file.name
 
-                        self.download_video_from_s3(video, output_file)
-                        futures.append(executor.submit(self.preprocess_video, video, output_file, reference_resolution, merge_task))
-                        preprocessed_large_files.append(output_file)
+                            self.download_video_from_s3(video, output_file)
+                            futures.append(executor.submit(self.preprocess_video, video, output_file, reference_resolution, merge_task))
+                            preprocessed_large_files.append(output_file)
 
                     for future in futures:
                         try:
