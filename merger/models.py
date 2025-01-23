@@ -46,6 +46,9 @@ class ShortVideo(models.Model):
             os.remove(self.video_file.path)
         super().delete(*args, **kwargs)
     def __str__(self):
+        if self.video_file:
+
+            return f"{self.merge_task}-{self.merge_task.id}-{self.video_file.name}"
         return f"{self.merge_task}-{self.merge_task.id}"
 class LargeVideo(models.Model):
     merge_task=models.ForeignKey(MergeTask,on_delete=models.CASCADE,related_name='large_videos')
