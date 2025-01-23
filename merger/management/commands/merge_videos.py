@@ -498,10 +498,10 @@ class Command(BaseCommand):
                 with ThreadPoolExecutor() as executor:
                     for video in large_video_files:
                         with tempfile.NamedTemporaryFile(dir=temp_dir, delete=False, suffix=".mp4") as temp_file:
-                            final_output = temp_file.name
+                            # final_output = temp_file.name
 
                         # temp_file = tempfile.NamedTemporaryFile(dir=temp_dir, delete=False, suffix=".mp4")
-                            temp_file.close()
+                            # temp_file.close()
                             output_file = temp_file.name
 
                             self.download_video_from_s3(video, output_file)
