@@ -72,7 +72,8 @@ class Command(BaseCommand):
             ]
             for future in as_completed(short_concat_futures):
                 future.result()
-
+        self.merge_task.status='completed'
+        self.merge_task.save()
         self.stdout.write(
             self.style.SUCCESS(f"Processing complete for {task_id}.")
         )
