@@ -131,7 +131,7 @@ class Command(BaseCommand):
             logging.error(f"FFprobe error for {video_file}: {e.stderr.strip()}")
             return None, None
 
-    def concatenate_videos(self,input_files, output_file, merge_task):
+    def concatenate_videos(self,input_files, output_file, merge_task,final_output_name,per_vid):
         """
         Concatenates multiple video files into a single output file using FFmpeg's concat filter.
         """
@@ -202,6 +202,16 @@ class Command(BaseCommand):
         if merge_task:
             merge_task.total_frames_done += (frames_processed - prev_frames_processed)
             merge_task.save()
+            
+        if output_file:
+            with open(output_file, 'rb') as f:
+                file_content = File(f)
+                link = VideoLinks.objects.create(
+                    merge_task=merge_task
+                )
+                link.video_file.save(final_output_name, file_content)
+                merge_task.track_progress(per_vid)
+
 
         logging.info(f"Finished concatenating: {output_file}")
     
@@ -405,7 +415,6 @@ class Command(BaseCommand):
             print(f"Error downloading the file: {e}")
 
 
-
     def get_file_names(self,s3_urls):
         """
         Extracts meaningful names from a list of S3 keys or URLs.
@@ -523,18 +532,9 @@ class Command(BaseCommand):
                             final_output = temp_file.name
 
                             concat_futures.append(
-                                executor.submit(self.concatenate_videos, [short_file, large_video], final_output, merge_task)
+                                executor.submit(self.concatenate_videos, [short_file, large_video], final_output, merge_task,final_output_name,per_vid)
                             )
                             
-                            if final_output:
-                                with open(final_output, 'rb') as f:
-                                    file_content = File(f)
-                                    link = VideoLinks.objects.create(
-                                        merge_task=merge_task
-                                    )
-                                    link.video_file.save(final_output_name, file_content)
-                                    merge_task.track_progress(per_vid)
-
                     for future in concat_futures:
                         try:
                             future.result()
