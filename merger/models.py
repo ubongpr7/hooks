@@ -7,12 +7,14 @@ def output_merger_video(instance,filename):
     return os.path.join("output_merger_video", str(instance.id), sanitize_filename(filename))
 
 def short_video_path(instance, filename):
-    """Generate a unique file path for each uploaded text file."""
     return os.path.join("short_videos", str(instance.merge_task.id), sanitize_filename(filename))
 
 def large_videos(instance, filename):
-    """Generate a unique file path for each uploaded text file."""
     return os.path.join("large_videos", str(instance.merge_task.id), sanitize_filename(filename))
+def large_video_processed(instance,filename):
+    return os.path.join("large_video_processed", str(instance.merge_task.id), sanitize_filename(filename))
+def short_video_processed(instance,filename):
+    return os.path.join("short_video_processed", str(instance.merge_task.id), sanitize_filename(filename))
 
 
 class MergeTask(models.Model):
@@ -39,9 +41,11 @@ class MergeTask(models.Model):
     def __str__(self) -> str:
         return self.status
 
+
 class ShortVideo(models.Model):
     merge_task=models.ForeignKey(MergeTask,on_delete=models.CASCADE,related_name='short_videos')
     video_file=models.FileField(upload_to=short_video_path,null=True,blank=True)
+    processed_file = models.FileField(upload_to=short_video_processed, null=True, blank=True)
     def delete(self, *args, **kwargs):
         if self.video_file and os.path.isfile(self.video_file.path):
             os.remove(self.video_file.path)
@@ -58,6 +62,7 @@ class ShortVideo(models.Model):
 class LargeVideo(models.Model):
     merge_task=models.ForeignKey(MergeTask,on_delete=models.CASCADE,related_name='large_videos')
     video_file=models.FileField(upload_to=large_videos,null=True,blank=True)
+    processed_file = models.FileField(upload_to=large_video_processed, null=True, blank=True)
     def delete(self, *args, **kwargs):
         if self.video_file:
             self.video_file.delete()
