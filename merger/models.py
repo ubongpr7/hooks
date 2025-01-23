@@ -1,5 +1,6 @@
 import os
 from django.db import connection, models
+from django.utils import timezone
 
 from utils.utils import sanitize_filename
 def output_merger_video(instance,filename):
@@ -45,6 +46,10 @@ class ShortVideo(models.Model):
         if self.video_file and os.path.isfile(self.video_file.path):
             os.remove(self.video_file.path)
         super().delete(*args, **kwargs)
+    created_at = models.DateTimeField(default=timezone.now)
+    class Meta:
+        ordering=['created_at']
+
     def __str__(self):
         if self.video_file:
 
