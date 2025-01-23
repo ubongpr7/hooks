@@ -309,100 +309,204 @@ class Command(BaseCommand):
             logging.error(f"FFprobe error for {video_file}: {e.stderr.strip()}")
             return None, None
 
-    def concatenate_videos(self,video, per_vid):
-        """
-        Concatenates multiple video files into a single output file using FFmpeg's concat filter.
-        """
-        merge_task=self.merge_task
+    # def concatenate_videos(self,video, per_vid):
+    #     """
+    #     Concatenates multiple video files into a single output file using FFmpeg's concat filter.
+    #     """
+    #     merge_task=self.merge_task
         
-        input_files=[video.processed_file.url,merge_task.large_videos.all()[0].processed_file.url]
-        final_output_name = f"{os.path.splitext(video.video_file.name.split('/')[-1])[0]}_{os.path.splitext(merge_task.large_videos.all()[0].video_file.name.split('/')[-1])[0]}.mp4"
+    #     input_files=[video.processed_file.url,merge_task.large_videos.all()[0].processed_file.url]
+    #     final_output_name = f"{os.path.splitext(video.video_file.name.split('/')[-1])[0]}_{os.path.splitext(merge_task.large_videos.all()[0].video_file.name.split('/')[-1])[0]}.mp4"
 
-        # final_output_name=f"{os.path.splitext(video.name.split('/')[-1])[0]}_{os.path.splitext(merge_task.large_videos.all()[0].video_file.name.split('/')[-1])[0]}"
-        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as temp_file:
-            output_file = temp_file.name 
-            logging.info(f"Concatenating videos into: {output_file}")
-            if len(input_files) < 2:
-                logging.error("Need at least two files to concatenate")
-                return
+    #     # final_output_name=f"{os.path.splitext(video.name.split('/')[-1])[0]}_{os.path.splitext(merge_task.large_videos.all()[0].video_file.name.split('/')[-1])[0]}"
+    #     with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as temp_file:
+    #         output_file = temp_file.name 
+    #         logging.info(f"Concatenating videos into: {output_file}")
+    #         if len(input_files) < 2:
+    #             logging.error("Need at least two files to concatenate")
+    #             return
 
-            # Build FFmpeg command with filter_complex 'concat'
-            command = ['ffmpeg', '-y']
-            for input_file in input_files:
-                command += ['-i', input_file]
+    #         # Build FFmpeg command with filter_complex 'concat'
+    #         command = ['ffmpeg', '-y']
+    #         for input_file in input_files:
+    #             command += ['-i', input_file]
 
-            # Construct the filter_complex string
-            filter_complex = ""
-            for i in range(len(input_files)):
-                filter_complex += f"[{i}:v][{i}:a]"
-            filter_complex += f"concat=n={len(input_files)}:v=1:a=1[outv][outa]"
+    #         # Construct the filter_complex string
+    #         filter_complex = ""
+    #         for i in range(len(input_files)):
+    #             filter_complex += f"[{i}:v][{i}:a]"
+    #         filter_complex += f"concat=n={len(input_files)}:v=1:a=1[outv][outa]"
 
-            command += [
-                '-filter_complex', filter_complex,
-                '-map', '[outv]',
-                '-map', '[outa]',
-                '-c:v', 'libx264',
-                '-preset', 'superfast',
-                '-c:a', 'aac',
-                '-pix_fmt', 'yuv420p',
-                '-r', '30',
-                output_file
-            ]
+    #         command += [
+    #             '-filter_complex', filter_complex,
+    #             '-map', '[outv]',
+    #             '-map', '[outa]',
+    #             '-c:v', 'libx264',
+    #             '-preset', 'superfast',
+    #             '-c:a', 'aac',
+    #             '-pix_fmt', 'yuv420p',
+    #             '-r', '30',
+    #             output_file
+    #         ]
 
-            logging.debug(f"Concatenate command: {' '.join(command)}")
-            process = subprocess.Popen(
-                command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True
-            )
+    #         logging.debug(f"Concatenate command: {' '.join(command)}")
+    #         process = subprocess.Popen(
+    #             command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True
+    #         )
 
-            frames_processed = 0
-            prev_frames_processed = 0
-            ffmpeg_error = ""
-            while True:
-                output = process.stderr.readline()
-                if output == '' and process.poll() is not None:
-                    break
-                if output:
-                    logging.debug(output.strip())
-                    ffmpeg_error += output
-                    match = re.search(r"frame=\s*(\d+)", output)
-                    if match:
-                        frames_processed = int(match.group(1))
-                        if frames_processed - prev_frames_processed >= 150:
-                            if merge_task:
-                                merge_task.total_frames_done += (frames_processed - prev_frames_processed)
-                                merge_task.track_progress(0)
-                                merge_task.save()
-                            prev_frames_processed = frames_processed
+    #         frames_processed = 0
+    #         prev_frames_processed = 0
+    #         ffmpeg_error = ""
+    #         while True:
+    #             output = process.stderr.readline()
+    #             if output == '' and process.poll() is not None:
+    #                 break
+    #             if output:
+    #                 logging.debug(output.strip())
+    #                 ffmpeg_error += output
+    #                 match = re.search(r"frame=\s*(\d+)", output)
+    #                 if match:
+    #                     frames_processed = int(match.group(1))
+    #                     if frames_processed - prev_frames_processed >= 150:
+    #                         if merge_task:
+    #                             merge_task.total_frames_done += (frames_processed - prev_frames_processed)
+    #                             merge_task.track_progress(0)
+    #                             merge_task.save()
+    #                         prev_frames_processed = frames_processed
                             
 
-            return_code = process.wait()
-            if return_code != 0:
-                logging.error(f"FFmpeg failed during concatenation of {output_file}.")
-                logging.error(f"FFmpeg error output: {ffmpeg_error}")
-                # Remove the invalid output file if FFmpeg failed
-                if os.path.exists(output_file):
-                    os.remove(output_file)
-                    logging.info(f"Removed invalid concatenated file: {output_file}")
-                return self.concatenate_videos(video,per_vid)
+    #         return_code = process.wait()
+    #         if return_code != 0:
+    #             logging.error(f"FFmpeg failed during concatenation of {output_file}.")
+    #             logging.error(f"FFmpeg error output: {ffmpeg_error}")
+    #             # Remove the invalid output file if FFmpeg failed
+    #             if os.path.exists(output_file):
+    #                 os.remove(output_file)
+    #                 logging.info(f"Removed invalid concatenated file: {output_file}")
+    #             # return self.concatenate_videos(video,per_vid)
 
-            if merge_task:
-                merge_task.total_frames_done += (frames_processed - prev_frames_processed)
-                merge_task.save()
+    #         if merge_task:
+    #             merge_task.total_frames_done += (frames_processed - prev_frames_processed)
+    #             merge_task.save()
                 
-            if output_file:
-                with open(output_file, "rb") as output_video_file:
-                    file_content = output_video_file.read()
+    #         if output_file:
+    #             with open(output_file, "rb") as output_video_file:
+    #                 file_content = output_video_file.read()
 
-                    link = VideoLinks.objects.create(
-                        merge_task=merge_task
+    #                 link = VideoLinks.objects.create(
+    #                     merge_task=merge_task
+    #                 )
+    #                 link.video_file.save(final_output_name, ContentFile(file_content))
+
+
+    #         import time
+    #         time.sleep(5)
+    #         logging.info(f"Finished concatenating: {output_file}")
+    #         merge_task.track_progress(per_vid)
+        
+    def concatenate_videos(self, video, per_vid):
+            """
+            Concatenates multiple video files into a single output file using FFmpeg's concat filter.
+            """
+            try:
+                merge_task = self.merge_task
+
+                input_files = [video.processed_file.url, merge_task.large_videos.all()[0].processed_file.url]
+                final_output_name = f"{os.path.splitext(video.video_file.name.split('/')[-1])[0]}_{os.path.splitext(merge_task.large_videos.all()[0].video_file.name.split('/')[-1])[0]}.mp4"
+
+                # final_output_name=f"{os.path.splitext(video.name.split('/')[-1])[0]}_{os.path.splitext(merge_task.large_videos.all()[0].video_file.name.split('/')[-1])[0]}"
+                with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as temp_file:
+                    output_file = temp_file.name
+                    logging.info(f"Concatenating videos into: {output_file}")
+                    if len(input_files) < 2:
+                        logging.error("Need at least two files to concatenate")
+                        return
+
+                    # Build FFmpeg command with filter_complex 'concat'
+                    command = ['ffmpeg', '-y']
+                    for input_file in input_files:
+                        command += ['-i', input_file]
+
+                    # Construct the filter_complex string
+                    filter_complex = ""
+                    for i in range(len(input_files)):
+                        filter_complex += f"[{i}:v][{i}:a]"
+                    filter_complex += f"concat=n={len(input_files)}:v=1:a=1[outv][outa]"
+
+                    command += [
+                        '-filter_complex', filter_complex,
+                        '-map', '[outv]',
+                        '-map', '[outa]',
+                        '-c:v', 'libx264',
+                        '-preset', 'superfast',
+                        '-c:a', 'aac',
+                        '-pix_fmt', 'yuv420p',
+                        '-r', '30',
+                        output_file
+                    ]
+
+                    logging.debug(f"Concatenate command: {' '.join(command)}")
+                    process = subprocess.Popen(
+                        command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True
                     )
-                    link.video_file.save(final_output_name, ContentFile(file_content))
 
+                    frames_processed = 0
+                    prev_frames_processed = 0
+                    ffmpeg_error = ""
+                    while True:
+                        output = process.stderr.readline()
+                        if output == '' and process.poll() is not None:
+                            break
+                        if output:
+                            logging.debug(output.strip())
+                            ffmpeg_error += output
+                            match = re.search(r"frame=\s*(\d+)", output)
+                            if match:
+                                frames_processed = int(match.group(1))
+                                if frames_processed - prev_frames_processed >= 150:
+                                    if merge_task:
+                                        merge_task.total_frames_done += (frames_processed - prev_frames_processed)
+                                        merge_task.track_progress(0)
+                                        merge_task.save()
+                                    prev_frames_processed = frames_processed
 
-            import time
-            time.sleep(5)
-            logging.info(f"Finished concatenating: {output_file}")
-            merge_task.track_progress(per_vid)
+                    return_code = process.wait()
+                    if return_code != 0:
+                        logging.error(f"FFmpeg failed during concatenation of {output_file}.")
+                        logging.error(f"FFmpeg error output: {ffmpeg_error}")
+                        # Remove the invalid output file if FFmpeg failed
+                        if os.path.exists(output_file):
+                            os.remove(output_file)
+                            logging.info(f"Removed invalid concatenated file: {output_file}")
+                        # Retry concatenation on failure
+                        # raise FileNotFoundError("File not found during FFmpeg processing.")
+
+                    if merge_task:
+                        merge_task.total_frames_done += (frames_processed - prev_frames_processed)
+                        merge_task.save()
+
+                    if output_file:
+                        with open(output_file, "rb") as output_video_file:
+                            file_content = output_video_file.read()
+
+                            link = VideoLinks.objects.create(
+                                merge_task=merge_task
+                            )
+                            link.video_file.save(final_output_name, ContentFile(file_content))
+
+                    import time
+                    time.sleep(5)
+                    logging.info(f"Finished concatenating: {output_file}")
+                    merge_task.track_progress(per_vid)
+
+            except FileNotFoundError as e:
+                logging.warning(f"FileNotFoundError encountered: {e}. Retrying...")
+                return self.concatenate_videos(video, per_vid)
+
+            except Exception as e:
+                logging.error(f"An unexpected error occurred: {e}")
+                raise
+
     def delete_processing_files(self, video):
         try:
             if video.processed_file:
