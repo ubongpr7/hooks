@@ -13,6 +13,7 @@ import boto3
 from merger.models import MergeTask, VideoLinks
 import logging
 import os
+import tempfile
 
 logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -338,6 +339,36 @@ class Command(BaseCommand):
             print(f"Error generating presigned URL: {e}")
             return None
         
+
+    def download_from_s3(self,file_key, local_file_path):
+
+        """
+        Download a file from S3 and save it to a local path.
+
+        Args:
+            file_key (str): The S3 object key (file path in the bucket).
+            local_file_path (str): The local file path where the file will be saved.
+
+        Returns:
+            bool: True if successful, False otherwise.
+            
+        """
+        AWS_ACCESS_KEY_ID = settings.AWS_ACCESS_KEY_ID
+        bucket_name = settings.AWS_STORAGE_BUCKET_NAME
+        aws_secret = settings.AWS_SECRET_ACCESS_KEY
+        s3 = boto3.client(
+            "s3", aws_access_key_id=AWS_ACCESS_KEY_ID, aws_secret_access_key=aws_secret
+        )
+
+        try:
+            # Download the file from the bucket using its S3 object key
+            response = s3.get_object(Bucket=bucket_name, Key=file_key)
+            object_content = response["Body"].read()
+            logging.info(f"Downloaded {file_key} from S3 to {local_file_path}")
+            return object_content
+        except Exception as e:
+            logging.error(f"Failed to download {file_key} from S3: {e}")
+            return False
         
 
     def download_video_from_s3(self,s3_url, local_folder):
@@ -372,20 +403,20 @@ class Command(BaseCommand):
         except Exception as e:
             print(f"Error downloading the file: {e}")
 
-    
+    def get_file_names(self, files):
+        return [file.split("/")[-1][:15] for file in files]
+
+
 
     def process_videos(self):
         """
         Orchestrates the preprocessing and concatenation of videos for a given task.
-        
         """
         logging.info("Starting video processing...")
-
         merge_task = self.merge_task
 
         short_video_files = [video.video_file.url for video in merge_task.short_videos.all()]
         large_video_files = [video.video_file.url for video in merge_task.large_videos.all()]
-
 
         if not large_video_files:
             logging.error("No large videos found for merging.")
@@ -403,145 +434,283 @@ class Command(BaseCommand):
         reference_resolution = ref_resolution
         logging.info(f"Reference resolution: {reference_resolution}")
 
-        preprocessed_short_files = []
-        short_video_names = []
-        with ThreadPoolExecutor() as executor:
-            futures = []
-            for video in short_video_files:
-                short_name = os.path.splitext(os.path.basename(video))[0]
-                short_video_names.append(short_name)
-                preprocessed_filename = f"preprocessed_{os.path.basename(video)}"
-                output_file = os.path.join(settings.OUTPUT_FOLDER, preprocessed_filename)
-                self.download_video_from_s3(video, output_file) 
-                futures.append(executor.submit(self.preprocess_video, video, output_file, reference_resolution, merge_task))
-                preprocessed_short_files.append(output_file)
-
-            for future in futures:
-                try:
-                    future.result()
-                except Exception as e:
-                    logging.error(f"Error during preprocessing: {e}")
-                    merge_task.status = 'failed'
-                    merge_task.save()
-                    return
-
-        preprocessed_large_files = []
-        large_video_names = []
-        with ThreadPoolExecutor() as executor:
-            futures = []
-            for video in large_video_files:
-
-                large_name = os.path.splitext(os.path.basename(video))[0]
-                large_video_names.append(large_name)
-                preprocessed_filename = f"preprocessed_{os.path.basename(video)}"
-                output_file = os.path.join(settings.OUTPUT_FOLDER, preprocessed_filename)
-                self.download_video_from_s3(video, output_file)
-                futures.append(executor.submit(self.preprocess_video, video, output_file, reference_resolution, merge_task))
-                preprocessed_large_files.append(output_file)
-
-            for future in futures:
-                try:
-                    future.result()
-                except Exception as e:
-                    logging.error(f"Error during preprocessing: {e}")
-                    merge_task.status = 'failed'
-                    merge_task.save()
-                    return
-
-        valid_preprocessed_short_files = []
-        valid_short_names = []
-        for pre_file, sname in zip(preprocessed_short_files, short_video_names):
-            w, h = self.check_video_format_resolution(pre_file)
-            if w and h:
-                valid_preprocessed_short_files.append(pre_file)
-                valid_short_names.append(sname)
-            else:
-                logging.error(f"Preprocessed file {pre_file} does not contain a valid video stream.")
-
-        if not valid_preprocessed_short_files:
-            logging.error("No valid preprocessed short videos available for concatenation.")
-            merge_task.status = 'failed'
-            merge_task.save()
-            return
-        
-
-        valid_preprocessed_large_files = []
-        valid_large_names = []
-        for pre_file, lname in zip(preprocessed_large_files, large_video_names):
-            w, h = self.check_video_format_resolution(pre_file)
-            if w and h:
-                valid_preprocessed_large_files.append(pre_file)
-                valid_large_names.append(lname)
-            else:
-                logging.error(f"Preprocessed file {pre_file} does not contain a valid video stream.")
-
-        if not valid_preprocessed_large_files:
-            logging.error("No valid preprocessed large videos available for concatenation.")
-            merge_task.status = 'failed'
-            merge_task.save()
-            return
-
-        final_output_files = []
-        with ThreadPoolExecutor() as executor:
-            concat_futures = []
-            for large_video, large_name in zip(valid_preprocessed_large_files, valid_large_names):
-                # Concatenate each short video with the large video
-                for short_file, sname in zip(valid_preprocessed_short_files, valid_short_names):
-                    # Remove 'preprocessed_' prefix for naming
-                    short_base = os.path.splitext(os.path.basename(short_file))[0].replace('preprocessed_', '')
-                    large_base = os.path.splitext(os.path.basename(large_video))[0].replace('preprocessed_', '')
-                    final_output_name = f"{short_base}_{large_base}.mp4"
-                    final_output = os.path.join(settings.OUTPUT_FOLDER, final_output_name)
-                    concat_futures.append(
-                        executor.submit(self.concatenate_videos, [short_file, large_video], final_output, merge_task)
-                    )
-
-                    relative_output = os.path.relpath(final_output, settings.MEDIA_ROOT)
-                    final_output_files.append({
-                        'video_link': relative_output.replace('\\', '/'),  # Ensure URL-friendly paths
-                        'file_name': final_output_name
-                    })
-
-            for future in concat_futures:
-                try:
-                    future.result()
-                except Exception as e:
-                    logging.error(f"Error during concatenation: {e}")
-                    merge_task.status = 'failed'
-                    merge_task.save()
-                    return
-        updated_video_links = []
-        for video in final_output_files:
-                video_file_path = video.get('video_link')
-                video_file_name = video.get('file_name')
-                if video_file_path:
-                    with open(video_file_path, 'rb') as f:
-                        file_content = File(f)
-                        link=VideoLinks.objects.create(
-                            merge_task=merge_task
-                        )
-                        
-                        link.video_file.save(video_file_name, file_content)                    # s3_key = f"output_merger_videos/{username}/{task_id}/{video_file_name}"
-                    # video_url = upload_to_s3(video_file_path, settings.AWS_STORAGE_BUCKET_NAME, s3_key)
-                    # updated_video_links.append({
-                    #     "file_name": video_file_name,
-                    #     "video_link": video_url
-                    # })
-
-        logging.info("Video processing complete!")
-        merge_task.status = 'completed'
-        # merge_task.video_links = updated_video_links
-        merge_task.save()
-        
         try:
-            # Delete temporary files
-            if os.path.exists(settings.OUTPUT_FOLDER):
-                shutil.rmtree(settings.OUTPUT_FOLDER)
-                print(f"Directory '{settings.OUTPUT_FOLDER}' removed successfully.")
-            else:
-                print(f"Directory '{settings.OUTPUT_FOLDER}' does not exist.")
+            # Use a temporary directory for output files
+            with tempfile.TemporaryDirectory() as temp_dir:
+                preprocessed_short_files = []
+                short_video_names = []
+                futures = []
+
+                # Preprocess short videos
+                with ThreadPoolExecutor() as executor:
+                    for video in short_video_files:
+                        short_name = os.path.splitext(os.path.basename(video))[0]
+                        short_video_names.append(short_name)
+
+                        temp_file = tempfile.NamedTemporaryFile(dir=temp_dir, delete=False, suffix=".mp4")
+                        temp_file.close()
+                        output_file = temp_file.name
+
+                        self.download_video_from_s3(video, output_file)
+                        futures.append(executor.submit(self.preprocess_video, video, output_file, reference_resolution, merge_task))
+                        preprocessed_short_files.append(output_file)
+
+                    for future in futures:
+                        try:
+                            future.result()
+                        except Exception as e:
+                            logging.error(f"Error during preprocessing: {e}")
+                            merge_task.status = 'failed'
+                            merge_task.save()
+                            return
+
+                # Preprocess large videos
+                preprocessed_large_files = []
+                large_video_names = []
+                futures = []
+
+                with ThreadPoolExecutor() as executor:
+                    for video in large_video_files:
+                        large_name = os.path.splitext(os.path.basename(video))[0]
+                        large_video_names.append(large_name)
+
+                        temp_file = tempfile.NamedTemporaryFile(dir=temp_dir, delete=False, suffix=".mp4")
+                        temp_file.close()
+                        output_file = temp_file.name
+
+                        self.download_video_from_s3(video, output_file)
+                        futures.append(executor.submit(self.preprocess_video, video, output_file, reference_resolution, merge_task))
+                        preprocessed_large_files.append(output_file)
+
+                    for future in futures:
+                        try:
+                            future.result()
+                        except Exception as e:
+                            logging.error(f"Error during preprocessing: {e}")
+                            merge_task.status = 'failed'
+                            merge_task.save()
+                            return
+
+                final_output_files = []
+                with ThreadPoolExecutor() as executor:
+                    concat_futures = []
+                    for large_video, large_name in zip(preprocessed_large_files, large_video_names):
+                        for short_file, sname in zip(preprocessed_short_files, short_video_names):
+                            short_base = os.path.splitext(os.path.basename(short_file))[0].replace('preprocessed_', '')
+                            large_base = os.path.splitext(os.path.basename(large_video))[0].replace('preprocessed_', '')
+                            final_output_name = f"{short_base}_{large_base}.mp4"
+
+                            temp_file = tempfile.NamedTemporaryFile(dir=temp_dir, delete=False, suffix=".mp4")
+                            temp_file.close()
+                            final_output = temp_file.name
+
+                            concat_futures.append(
+                                executor.submit(self.concatenate_videos, [short_file, large_video], final_output, merge_task)
+                            )
+                            final_output_files.append({
+                                'video_link': final_output,
+                                'file_name': final_output_name
+                            })
+
+                    for future in concat_futures:
+                        try:
+                            future.result()
+                        except Exception as e:
+                            logging.error(f"Error during concatenation: {e}")
+                            merge_task.status = 'failed'
+                            merge_task.save()
+                            return
+
+                # Save video links to the database
+                for video in final_output_files:
+                    video_file_path = video.get('video_link')
+                    video_file_name = video.get('file_name')
+                    if video_file_path:
+                        with open(video_file_path, 'rb') as f:
+                            file_content = File(f)
+                            link = VideoLinks.objects.create(
+                                merge_task=merge_task
+                            )
+                            link.video_file.save(video_file_name, file_content)
+
+            logging.info("Video processing complete!")
+            merge_task.status = 'completed'
+            merge_task.save()
+
         except Exception as e:
-            print(f"Error removing directory '{settings.OUTPUT_FOLDER}': {e}")
+            logging.error(f"An error occurred during video processing: {e}")
+            merge_task.status = 'failed'
+            merge_task.save()
+        
+
+    # def process_videos(self):
+    #     """
+    #     Orchestrates the preprocessing and concatenation of videos for a given task.
+        
+    #     """
+    #     logging.info("Starting video processing...")
+
+    #     merge_task = self.merge_task
+
+    #     short_video_files = [video.video_file.url for video in merge_task.short_videos.all()]
+    #     large_video_files = [video.video_file.url for video in merge_task.large_videos.all()]
+
+
+    #     if not large_video_files:
+    #         logging.error("No large videos found for merging.")
+    #         merge_task.status = 'failed'
+    #         merge_task.save()
+    #         return
+
+    #     ref_resolution = self.check_video_format_resolution(large_video_files[0])
+    #     if not ref_resolution or not ref_resolution[0] or not ref_resolution[1]:
+    #         logging.error("Invalid reference resolution. Cannot preprocess videos.")
+    #         merge_task.status = 'failed'
+    #         merge_task.save()
+    #         return
+
+    #     reference_resolution = ref_resolution
+    #     logging.info(f"Reference resolution: {reference_resolution}")
+
+    #     preprocessed_short_files = []
+    #     short_video_names = []
+    #     with ThreadPoolExecutor() as executor:
+    #         futures = []
+    #         for video in short_video_files:
+    #             short_name = os.path.splitext(os.path.basename(video))[0]
+    #             short_video_names.append(short_name)
+    #             preprocessed_filename = f"preprocessed_{os.path.basename(video)}"
+    #             output_file = os.path.join(settings.OUTPUT_FOLDER, preprocessed_filename)
+    #             self.download_video_from_s3(video, output_file) 
+    #             futures.append(executor.submit(self.preprocess_video, video, output_file, reference_resolution, merge_task))
+    #             preprocessed_short_files.append(output_file)
+
+    #         for future in futures:
+    #             try:
+    #                 future.result()
+    #             except Exception as e:
+    #                 logging.error(f"Error during preprocessing: {e}")
+    #                 merge_task.status = 'failed'
+    #                 merge_task.save()
+    #                 return
+
+    #     preprocessed_large_files = []
+    #     large_video_names = []
+    #     with ThreadPoolExecutor() as executor:
+    #         futures = []
+    #         for video in large_video_files:
+
+    #             large_name = os.path.splitext(os.path.basename(video))[0]
+    #             large_video_names.append(large_name)
+    #             preprocessed_filename = f"preprocessed_{os.path.basename(video)}"
+    #             output_file = os.path.join(settings.OUTPUT_FOLDER, preprocessed_filename)
+    #             self.download_video_from_s3(video, output_file)
+    #             futures.append(executor.submit(self.preprocess_video, video, output_file, reference_resolution, merge_task))
+    #             preprocessed_large_files.append(output_file)
+
+    #         for future in futures:
+    #             try:
+    #                 future.result()
+    #             except Exception as e:
+    #                 logging.error(f"Error during preprocessing: {e}")
+    #                 merge_task.status = 'failed'
+    #                 merge_task.save()
+    #                 return
+
+    #     valid_preprocessed_short_files = []
+    #     valid_short_names = []
+    #     for pre_file, sname in zip(preprocessed_short_files, short_video_names):
+    #         w, h = self.check_video_format_resolution(pre_file)
+    #         if w and h:
+    #             valid_preprocessed_short_files.append(pre_file)
+    #             valid_short_names.append(sname)
+    #         else:
+    #             logging.error(f"Preprocessed file {pre_file} does not contain a valid video stream.")
+
+    #     if not valid_preprocessed_short_files:
+    #         logging.error("No valid preprocessed short videos available for concatenation.")
+    #         merge_task.status = 'failed'
+    #         merge_task.save()
+    #         return
+        
+
+    #     valid_preprocessed_large_files = []
+    #     valid_large_names = []
+    #     for pre_file, lname in zip(preprocessed_large_files, large_video_names):
+    #         w, h = self.check_video_format_resolution(pre_file)
+    #         if w and h:
+    #             valid_preprocessed_large_files.append(pre_file)
+    #             valid_large_names.append(lname)
+    #         else:
+    #             logging.error(f"Preprocessed file {pre_file} does not contain a valid video stream.")
+
+    #     if not valid_preprocessed_large_files:
+    #         logging.error("No valid preprocessed large videos available for concatenation.")
+    #         merge_task.status = 'failed'
+    #         merge_task.save()
+    #         return
+
+    #     final_output_files = []
+    #     with ThreadPoolExecutor() as executor:
+    #         concat_futures = []
+    #         for large_video, large_name in zip(valid_preprocessed_large_files, valid_large_names):
+    #             # Concatenate each short video with the large video
+    #             for short_file, sname in zip(valid_preprocessed_short_files, valid_short_names):
+    #                 # Remove 'preprocessed_' prefix for naming
+    #                 short_base = os.path.splitext(os.path.basename(short_file))[0].replace('preprocessed_', '')
+    #                 large_base = os.path.splitext(os.path.basename(large_video))[0].replace('preprocessed_', '')
+    #                 final_output_name = f"{short_base}_{large_base}.mp4"
+    #                 final_output = os.path.join(settings.OUTPUT_FOLDER, final_output_name)
+    #                 concat_futures.append(
+    #                     executor.submit(self.concatenate_videos, [short_file, large_video], final_output, merge_task)
+    #                 )
+
+    #                 relative_output = os.path.relpath(final_output, settings.MEDIA_ROOT)
+    #                 final_output_files.append({
+    #                     'video_link': relative_output.replace('\\', '/'),  # Ensure URL-friendly paths
+    #                     'file_name': final_output_name
+    #                 })
+
+    #         for future in concat_futures:
+    #             try:
+    #                 future.result()
+    #             except Exception as e:
+    #                 logging.error(f"Error during concatenation: {e}")
+    #                 merge_task.status = 'failed'
+    #                 merge_task.save()
+    #                 return
+    #     updated_video_links = []
+    #     for video in final_output_files:
+    #             video_file_path = video.get('video_link')
+    #             video_file_name = video.get('file_name')
+    #             if video_file_path:
+    #                 with open(video_file_path, 'rb') as f:
+    #                     file_content = File(f)
+    #                     link=VideoLinks.objects.create(
+    #                         merge_task=merge_task
+    #                     )
+                        
+    #                     link.video_file.save(video_file_name, file_content)                    # s3_key = f"output_merger_videos/{username}/{task_id}/{video_file_name}"
+    #                 # video_url = upload_to_s3(video_file_path, settings.AWS_STORAGE_BUCKET_NAME, s3_key)
+    #                 # updated_video_links.append({
+    #                 #     "file_name": video_file_name,
+    #                 #     "video_link": video_url
+    #                 # })
+
+    #     logging.info("Video processing complete!")
+    #     merge_task.status = 'completed'
+    #     # merge_task.video_links = updated_video_links
+    #     merge_task.save()
+        
+    #     try:
+    #         # Delete temporary files
+    #         if os.path.exists(settings.OUTPUT_FOLDER):
+    #             shutil.rmtree(settings.OUTPUT_FOLDER)
+    #             print(f"Directory '{settings.OUTPUT_FOLDER}' removed successfully.")
+    #         else:
+    #             print(f"Directory '{settings.OUTPUT_FOLDER}' does not exist.")
+    #     except Exception as e:
+    #         print(f"Error removing directory '{settings.OUTPUT_FOLDER}': {e}")
             
             
             
