@@ -62,9 +62,9 @@ class ShortVideo(models.Model):
         ordering=['created_at']
 
     def __str__(self):
-        if self.video_file:
+        if self.processed_file:
 
-            return f"{self.merge_task}-{self.merge_task.id}-{self.video_file.name}"
+            return f"{self.merge_task}-{self.merge_task.id}-{self.processed_file.name}"
         return f"{self.merge_task}-{self.merge_task.id}"
 class LargeVideo(models.Model):
     merge_task=models.ForeignKey(MergeTask,on_delete=models.CASCADE,related_name='large_videos')
