@@ -57,29 +57,6 @@ class Command(BaseCommand):
         for video in short_videos:
             self.concatenate_videos(video,per_vid)
 
-        # with ThreadPoolExecutor() as executor:
-        #         short_preprocess_futures = [
-        #             executor.submit(self.preprocess_video, video, reference_resolution)
-        #             for video in short_videos
-        #         ]
-        #         for future in as_completed(short_preprocess_futures):
-        #             future.result() 
-
-        # with ThreadPoolExecutor() as executor:
-        #     large_preprocess_futures = [
-        #         executor.submit(self.preprocess_video, video, reference_resolution)
-        #         for video in large_videos
-        #     ]
-        #     for future in as_completed(large_preprocess_futures):
-        #         future.result() 
-
-        # with ThreadPoolExecutor() as executor:
-        #     short_concat_futures = [
-        #         executor.submit(self.concatenate_videos, video, reference_resolution)
-        #         for video in short_videos
-        #     ]
-        #     for future in as_completed(short_concat_futures):
-        #         future.result()
         self.merge_task.status='completed'
         self.merge_task.save()
         self.stdout.write(
@@ -351,6 +328,7 @@ class Command(BaseCommand):
                         if frames_processed - prev_frames_processed >= 150:
                             if merge_task:
                                 merge_task.total_frames_done += (frames_processed - prev_frames_processed)
+                                merge_task.track_progress(0)
                                 merge_task.save()
                             prev_frames_processed = frames_processed
                             
