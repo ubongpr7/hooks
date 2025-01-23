@@ -555,6 +555,8 @@ class Command(BaseCommand):
                             merge_task.status = 'failed'
                             merge_task.save()
                             return
+                
+                logging.info(f"preprocessed_large_files: {len(preprocessed_short_files)}")
 
             logging.info("Video processing complete!")
             merge_task.status = 'completed'
