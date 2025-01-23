@@ -554,7 +554,7 @@ class Command(BaseCommand):
 
             # Save the output file to the processed_file field of the video object
             with open(output_file, 'rb') as file_data:
-                video.video_file.save(f"processed_{os.path.basename(output_file)}", file_data)
+                video.processed_file.save(f"processed_{os.path.basename(output_file)}", file_data)
             
             # Cleanup temporary file
             os.remove(output_file)
