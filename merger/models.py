@@ -44,7 +44,8 @@ class ShortVideo(models.Model):
         if self.video_file and os.path.isfile(self.video_file.path):
             os.remove(self.video_file.path)
         super().delete(*args, **kwargs)
-
+    def __str__(self):
+        return f"{self.merge_task}-{self.merge_task.id}"
 class LargeVideo(models.Model):
     merge_task=models.ForeignKey(MergeTask,on_delete=models.CASCADE,related_name='large_videos')
     video_file=models.FileField(upload_to=large_videos,null=True,blank=True)
@@ -68,7 +69,8 @@ class LargeVideo(models.Model):
             cursor.execute(
                 f"SELECT setval('{sequence_name}', (SELECT MAX(id) FROM {table_name}) + 1)"
             )
-
+    def __str__(self):
+        return f"{self.merge_task}-{self.merge_task.id}"
 class VideoLinks(models.Model):
     merge_task=models.ForeignKey(MergeTask,on_delete=models.CASCADE,related_name='video_links')
     video_file=models.FileField(upload_to=output_merger_video,null=True,blank=True)
