@@ -343,7 +343,6 @@ class Command(BaseCommand):
                         if frames_processed - prev_frames_processed >= 150:
                             if merge_task:
                                 merge_task.total_frames_done += (frames_processed - prev_frames_processed)
-                                merge_task.track_progress(0)
                                 merge_task.save()
                             prev_frames_processed = frames_processed
                             
@@ -371,110 +370,13 @@ class Command(BaseCommand):
                     link.video_file.save(final_output_name, file_content)
                     # merge_task.track_progress(per_vid)
 
+
             import time
             # time.sleep(25)
             logging.info(f"Finished concatenating: {output_file}")
+            merge_task.track_progress(0)
+
     
-    # def preprocess_video(self,video, reference_resolution=None, ):
-    #     """
-    #     Preprocesses a video by scaling it to the reference resolution and ensuring consistent encoding.
-    #     Ensures that the output dimensions are even and that audio streams are present.
-    #     If the input video lacks an audio stream, adds a silent audio track.
-    #     """
-    #     merge_task=self.merge_task
-    #     input_file=video.url
-    #     logging.info(f"Preprocessing video: {input_file}")
-
-    #     input_has_audio = self.has_audio(input_file)
-    #     with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as temp_file:
-    #         # video_file = self.download_from_s3(video.video_file.name, temp_file.name)
-    #         output_file=temp_file.name
-    #         if input_has_audio:
-    #             # Video with audio: scale and encode
-    #             command = ["ffmpeg", "-y", "-i", input_file]
-
-    #             if reference_resolution:
-    #                 width, height = reference_resolution
-    #                 # Scale with aspect ratio preservation and enforce even dimensions
-    #                 vf_filter = (
-    #                     f"scale={width}:{height}:force_original_aspect_ratio=decrease,"
-    #                     f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,"
-    #                     f"format=yuv420p"
-    #                 )
-    #                 command += ["-vf", vf_filter]
-
-    #             # Ensure audio is encoded
-    #             command += [
-    #                 "-c:v", "libx264",
-    #                 "-preset", "ultrafast",
-    #                 "-c:a", "aac",
-    #                 "-pix_fmt", "yuv420p",
-    #                 "-r", "30",  # Enforce frame rate
-    #                 output_file
-    #             ]
-    #         else:
-    #             # Video without audio: add silent audio
-    #             command = [
-    #                 "ffmpeg", "-y", "-i", input_file,
-    #                 "-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=44100",
-    #             ]
-
-    #             if reference_resolution:
-    #                 width, height = reference_resolution
-    #                 vf_filter = (
-    #                     f"scale={width}:{height}:force_original_aspect_ratio=decrease,"
-    #                     f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,"
-    #                     f"format=yuv420p"
-    #                 )
-    #                 command += ["-vf", vf_filter]
-
-    #             # Map video and silent audio
-    #             command += [
-    #                 "-c:v", "libx264",
-    #                 "-preset", "ultrafast",
-    #                 "-c:a", "aac",
-    #                 "-shortest",
-    #                 "-pix_fmt", "yuv420p",
-    #                 "-r", "30",  # Enforce frame rate
-    #                 output_file
-    #             ]
-
-    #         logging.debug(f"Preprocess command: {' '.join(command)}")
-    #         process = subprocess.Popen(
-    #             command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True
-    #         )
-
-    #         frames_processed = 0
-    #         prev_frames_processed = 0
-    #         while True:
-    #             output = process.stderr.readline()
-    #             if output == '' and process.poll() is not None:
-    #                 break
-    #             if output:
-    #                 logging.debug(output.strip())
-    #                 match = re.search(r"frame=\s*(\d+)", output)
-    #                 if match:
-    #                     frames_processed = int(match.group(1))
-    #                     if frames_processed - prev_frames_processed >= 150:
-    #                         if merge_task:
-    #                             merge_task.total_frames_done += (frames_processed - prev_frames_processed)
-    #                             merge_task.save()
-    #                         prev_frames_processed = frames_processed
-
-    #         return_code = process.wait()
-    #         if return_code != 0:
-    #             logging.error(f"FFmpeg failed during preprocessing of {input_file}. Check logs above for details.")
-    #             # Remove the invalid output file if FFmpeg failed
-    #             if os.path.exists(output_file):
-    #                 os.remove(output_file)
-    #                 logging.info(f"Removed invalid preprocessed file: {output_file}")
-    #             return
-
-    #         if merge_task:
-    #             merge_task.total_frames_done += (frames_processed - prev_frames_processed)
-    #             merge_task.save()
-
-    #         logging.info(f"Finished preprocessing: {output_file}")
             
     def preprocess_video(self, video, reference_resolution=None):
         """
