@@ -541,12 +541,13 @@ class Command(BaseCommand):
                             merge_task.status = 'failed'
                             merge_task.save()
                             return
-            import time
-            time.sleep(7)
+            # import time
+            # time.sleep(7)
+            if len(self.merge_task.video_links.all())==len(self.merge_task.short_videos.all()):
 
-            logging.info("Video processing complete!")
-            merge_task.status = 'completed'
-            merge_task.save()
+                logging.info("Video processing complete!")
+                merge_task.status = 'completed'
+                merge_task.save()
 
         except Exception as e:
             logging.error(f"An error occurred during video processing: {e}")
