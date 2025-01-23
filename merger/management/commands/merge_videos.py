@@ -510,8 +510,9 @@ class Command(BaseCommand):
                     concat_futures = []
                     for large_video, large_name in zip(preprocessed_large_files, large_video_names):
                         for short_file, sname in zip(preprocessed_short_files, short_video_names):
-                            short_base = os.path.splitext(os.path.basename(short_file))[0].replace('preprocessed_', '')
-                            large_base = os.path.splitext(os.path.basename(large_video))[0].replace('preprocessed_', '')
+                            short_base =sname
+                            # short_base = os.path.splitext(os.path.basename(sname))[0].replace('preprocessed_', '')
+                            large_base =large_name
                             final_output_name = f"{short_base}_{large_base}.mp4"
 
                             temp_file = tempfile.NamedTemporaryFile(dir=temp_dir, delete=False, suffix=".mp4")
