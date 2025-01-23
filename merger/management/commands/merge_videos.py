@@ -537,6 +537,7 @@ class Command(BaseCommand):
                             if merge_task:
                                 merge_task.total_frames_done += (frames_processed - prev_frames_processed)
                                 merge_task.save()
+                                merge_task.track_progress(0)
                             prev_frames_processed = frames_processed
 
             return_code = process.wait()
