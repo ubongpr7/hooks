@@ -122,7 +122,7 @@ def get_progress(request, task_id):
     Returns the progress of the video processing task.
     """
     merge_task = get_object_or_404(MergeTask, id=task_id)
-    progress=int(merge_task.progress)
+    progress=merge_task.progress
     return JsonResponse({'progress': progress})
 
 
