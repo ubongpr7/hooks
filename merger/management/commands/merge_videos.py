@@ -1,4 +1,4 @@
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import logging
 import os
 import re
@@ -49,16 +49,29 @@ class Command(BaseCommand):
             self.merge_task.save()
             return
         reference_resolution = ref_resolution
-        for video in short_videos:
-            self.preprocess_video(video,reference_resolution)
-        for video in large_videos:
-            self.preprocess_video(video,reference_resolution)
-    
-        for video in short_videos:
-            self.concatenate_videos(video,reference_resolution)
-    
+        with ThreadPoolExecutor() as executor:
+                short_preprocess_futures = [
+                    executor.submit(self.preprocess_video, video, reference_resolution)
+                    for video in short_videos
+                ]
+                for future in as_completed(short_preprocess_futures):
+                    future.result() 
 
+        with ThreadPoolExecutor() as executor:
+            large_preprocess_futures = [
+                executor.submit(self.preprocess_video, video, reference_resolution)
+                for video in large_videos
+            ]
+            for future in as_completed(large_preprocess_futures):
+                future.result() 
 
+        with ThreadPoolExecutor() as executor:
+            short_concat_futures = [
+                executor.submit(self.concatenate_videos, video, reference_resolution)
+                for video in short_videos
+            ]
+            for future in as_completed(short_concat_futures):
+                future.result()
 
         self.stdout.write(
             self.style.SUCCESS(f"Processing complete for {task_id}.")
