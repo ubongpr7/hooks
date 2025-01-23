@@ -42,7 +42,6 @@ class Command(BaseCommand):
         ref_resolution = self.check_video_format_resolution(large_video_files_urls[0])
         short_videos=self.merge_task.short_videos.all()
         large_videos=self.merge_task.large_videos.all()
-        short_videos.append(large_videos[0])
 
 
         if not ref_resolution or not ref_resolution[0] or not ref_resolution[1]:
@@ -387,7 +386,7 @@ class Command(BaseCommand):
                 if os.path.exists(output_file):
                     os.remove(output_file)
                     logging.info(f"Removed invalid concatenated file: {output_file}")
-                return
+                return self.concatenate_videos(video,per_vid)
 
             if merge_task:
                 merge_task.total_frames_done += (frames_processed - prev_frames_processed)
