@@ -14,7 +14,7 @@ from merger.models import MergeTask, VideoLinks
 import logging
 import os
 import tempfile
-
+from joblib import Parallel, delayed
 logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s"
 )
@@ -49,29 +49,38 @@ class Command(BaseCommand):
             self.merge_task.save()
             return
         reference_resolution = ref_resolution
-        with ThreadPoolExecutor() as executor:
-                short_preprocess_futures = [
-                    executor.submit(self.preprocess_video, video, reference_resolution)
-                    for video in short_videos
-                ]
-                for future in as_completed(short_preprocess_futures):
-                    future.result() 
+        Parallel(n_jobs=len(short_videos))(
+                delayed(self.preprocess_video)(video, reference_resolution) for video in short_videos
+            )
+        Parallel(n_jobs=1)(
+                delayed(self.preprocess_video)(video, reference_resolution) for video in large_videos
+            )
+        Parallel(n_jobs=3)(
+                delayed(self.concatenate_videos)(video, reference_resolution) for video in short_videos
+            )
+        # with ThreadPoolExecutor() as executor:
+        #         short_preprocess_futures = [
+        #             executor.submit(self.preprocess_video, video, reference_resolution)
+        #             for video in short_videos
+        #         ]
+        #         for future in as_completed(short_preprocess_futures):
+        #             future.result() 
 
-        with ThreadPoolExecutor() as executor:
-            large_preprocess_futures = [
-                executor.submit(self.preprocess_video, video, reference_resolution)
-                for video in large_videos
-            ]
-            for future in as_completed(large_preprocess_futures):
-                future.result() 
+        # with ThreadPoolExecutor() as executor:
+        #     large_preprocess_futures = [
+        #         executor.submit(self.preprocess_video, video, reference_resolution)
+        #         for video in large_videos
+        #     ]
+        #     for future in as_completed(large_preprocess_futures):
+        #         future.result() 
 
-        with ThreadPoolExecutor() as executor:
-            short_concat_futures = [
-                executor.submit(self.concatenate_videos, video, reference_resolution)
-                for video in short_videos
-            ]
-            for future in as_completed(short_concat_futures):
-                future.result()
+        # with ThreadPoolExecutor() as executor:
+        #     short_concat_futures = [
+        #         executor.submit(self.concatenate_videos, video, reference_resolution)
+        #         for video in short_videos
+        #     ]
+        #     for future in as_completed(short_concat_futures):
+        #         future.result()
         self.merge_task.status='completed'
         self.merge_task.save()
         self.stdout.write(
