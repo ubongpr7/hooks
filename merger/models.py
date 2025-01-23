@@ -81,4 +81,4 @@ class VideoLinks(models.Model):
            return {'video_link': self.video_file.name,'file_name':self.video_file.name.split("/")[-1][:30]} 
         return
     def __str__(self):
-        return f"{self.merge_task}"
+        return f"{self.merge_task}-{self.merge_task.id}"
