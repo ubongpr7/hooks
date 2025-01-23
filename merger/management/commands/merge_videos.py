@@ -213,7 +213,7 @@ class Command(BaseCommand):
                 merge_task.track_progress(per_vid)
 
         import time
-        time.sleep(10)
+        time.sleep(15)
         logging.info(f"Finished concatenating: {output_file}")
     
     def preprocess_video(self,input_file, output_file, reference_resolution=None, merge_task=None):
