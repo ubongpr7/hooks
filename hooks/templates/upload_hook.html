@@ -87,12 +87,13 @@
         font-family: 'Plus Jakarta Sans', sans-serif;
       }
 
-      .head .spans {
+      .tiktok-spans {
         text-align: center;
         display: none;
+        margin-top: 130px;
       }
 
-      .head span {
+      .tiktok-spans span {
         font-size: 21px;
         line-height: 30px;
         font-family: Poppins, sans-serif;
@@ -101,6 +102,10 @@
         border-radius: 8px;
         font-weight: 900;
         padding: 5px 8px;
+      }
+
+      .head {
+        background-color: #485AFF;
       }
     </style>
   </head>
@@ -446,12 +451,13 @@
             </div>
             <div class="head" id="textbg" style="padding: 5px;">
               <h1 id="text">This Is How Your Hook Text Will Look Like On The Video</h1>
-
-              <div class="spans">
-                <span>This Is How Your Hook Text Will</span>
-                <span>Look Like On The Video</span>
-              </div>
             </div>
+
+            <div class="tiktok-spans">
+              <span>This Is How Your Hook Text Will</span>
+              <span>Look Like On The Video</span>
+            </div>
+
             <div class="info">
               {% if hook.hooks_content %}
                 <video controls>
@@ -796,24 +802,19 @@
         textElement.style.fontSize = `${fontSize}px`;
 
         if (resolution === 'option3') {
+          head.style.display = 'none';
           tiktokBar.style.display = 'block';
-          headTag.style.display = 'none';
-          head.style.paddingTop = '130px';
-          head.style.background = 'none';
-          document.querySelector('.head .spans').style.display = 'block';
+          document.querySelector('.tiktok-spans').style.display = 'block';
           if (screenWidth >= 1200) {
             headTag.style.lineHeight = '30px';
           }
         } else {
+          head.style.display = 'block';
           tiktokBar.style.display = 'none';
-          headTag.style.display = 'block';
-          head.style.padding = '5px';
-          head.style.background = '#485AFF';
-          document.querySelector('.head .spans').style.display = 'none';
+          document.querySelector('.tiktok-spans').style.display = 'none';
           if (screenWidth >= 1200) {
             headTag.style.lineHeight = '40px';
           }
-
         }
       }
 
@@ -908,6 +909,18 @@
 
         fontColorInput.value = color;
         fontColorInput.dispatchEvent(new Event('input'));
+      });
+
+      boxColorInput.addEventListener('input', function () {
+        document.querySelectorAll('.tiktok-spans span').forEach((spanEl) => {
+          spanEl.style.background= `${boxColorInput.value}`;
+        });
+      });
+
+      fontcolor.addEventListener('input', function () {
+        document.querySelectorAll('.tiktok-spans span').forEach((spanEl) => {
+          spanEl.style.color= `${fontColorInput.value}`;
+        });
       });
     </script>
   </body>

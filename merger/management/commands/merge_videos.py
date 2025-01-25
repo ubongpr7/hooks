@@ -20,9 +20,8 @@ logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
-
 class Command(BaseCommand):
-    help = "Process video files based on TextFile model"
+    help = "Process video files based on MergeTask model"
 
     def add_arguments(self, parser):
         parser.add_argument("task_id", type=int)
@@ -103,152 +102,7 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.SUCCESS(f"Processing complete for {task_id}.")
         )
-
-    
-    def process_videos(self):
-        """
-        Orchestrates the preprocessing and concatenation of videos for a given task.
-        """
-        logging.info("Starting video processing...")
-        merge_task = self.merge_task
-
-        short_video_files = [video.video_file.url for video in merge_task.short_videos.all()]
-        large_video_files = [video.video_file.url for video in merge_task.large_videos.all()]
-
-        if not large_video_files:
-            logging.error("No large videos found for merging.")
-            merge_task.status = 'failed'
-            merge_task.save()
-            return
-
-        ref_resolution = self.check_video_format_resolution(large_video_files[0])
-        if not ref_resolution or not ref_resolution[0] or not ref_resolution[1]:
-            logging.error("Invalid reference resolution. Cannot preprocess videos.")
-            merge_task.status = 'failed'
-            merge_task.save()
-            return
-
-        reference_resolution = ref_resolution
-        logging.info(f"Reference resolution: {reference_resolution}")
-        try:
-            # Use a temporary directory for output files
-            with tempfile.TemporaryDirectory() as temp_dir:
-                preprocessed_short_files = []
-                short_video_names = self.get_file_names(short_video_files)
-                futures = []
-
-                # Preprocess short videos
-                with ThreadPoolExecutor() as executor:
-                    for video in short_video_files:
-                        # short_name = os.path.splitext(os.path.basename(video))[0]
-                        # short_video_names.append(short_name)
-
-                        temp_file = tempfile.NamedTemporaryFile(dir=temp_dir, delete=False, suffix=".mp4")
-                        temp_file.close()
-                        output_file = temp_file.name
-
-                        self.download_video_from_s3(video, output_file)
-                        futures.append(executor.submit(self.preprocess_video, video, output_file, reference_resolution, merge_task))
-                        preprocessed_short_files.append(output_file)
-
-                    for future in futures:
-                        try:
-                            future.result()
-                        except Exception as e:
-                            logging.error(f"Error during preprocessing: {e}")
-                            merge_task.status = 'failed'
-                            merge_task.save()
-                            return
-
-                # Preprocess large videos
-                preprocessed_large_files = []
-                large_video_names = self.get_file_names(large_video_files)
-                futures = []
-
-                with ThreadPoolExecutor() as executor:
-                    for video in large_video_files:
-                        with tempfile.NamedTemporaryFile(dir=temp_dir, delete=False, suffix=".mp4") as temp_file:
-                            # final_output = temp_file.name
-
-                        # temp_file = tempfile.NamedTemporaryFile(dir=temp_dir, delete=False, suffix=".mp4")
-                            # temp_file.close()
-                            output_file = temp_file.name
-
-                            self.download_video_from_s3(video, output_file)
-                            futures.append(executor.submit(self.preprocess_video, video, output_file, reference_resolution, merge_task))
-                            preprocessed_large_files.append(output_file)
-
-                    for future in futures:
-                        try:
-                            future.result()
-                        except Exception as e:
-                            logging.error(f"Error during preprocessing: {e}")
-                            merge_task.status = 'failed'
-                            merge_task.save()
-                            return
-                final_output_files = []
-                per_vid=int(50/len(short_video_names))
-
-                with ThreadPoolExecutor() as executor:
-                    concat_futures = []
-                    for large_video, large_name in zip(preprocessed_large_files, large_video_names):
-                        for short_file, sname in zip(preprocessed_short_files, short_video_names):
-                            # short_base = os.path.splitext(os.path.basename(sname))[0].replace('preprocessed_', '')
-                            final_output_name = f"{sname}_{large_name}.mp4"
-
-                            # temp_file = tempfile.NamedTemporaryFile(dir=temp_dir, delete=False, suffix=".mp4")
-                            # temp_file.close()
-                            # final_output = temp_file.name
-
-                            # concat_futures.append(
-                            #     executor.submit(self.concatenate_videos, [short_file, large_video], final_output, merge_task,final_output_name,per_vid)
-                            # )
-                            with tempfile.NamedTemporaryFile(dir=temp_dir, delete=False, suffix=".mp4") as temp_file:
-                                final_output = temp_file.name
-
-                                logging.info(f"Submitting task for: {short_file} + {large_video} -> {final_output_name}")
-                                concat_futures.append(
-                                    executor.submit(
-                                        self.concatenate_videos,
-                                        [short_file, large_video],
-                                        final_output,
-                                        merge_task,
-                                        final_output_name,
-                                        per_vid,
-                                    )
-                                )
-                            
-                    for future in concat_futures:
-                        try:
-                            future.result()
-                        except Exception as e:
-                            logging.error(f"Error during concatenation: {e}")
-                            merge_task.status = 'failed'
-                            merge_task.save()
-                            return
-                
-                logging.info(f"preprocessed_large_files: {len(preprocessed_short_files)} and concat_futures: {len(concat_futures)}")
-
-            logging.info("Video processing complete!")
-            merge_task.status = 'completed'
-            merge_task.save()
-
-        except Exception as e:
-            logging.error(f"An error occurred during video processing: {e}")
-            merge_task.status = 'failed'
-            merge_task.save()
-    
  
-
-    def sanitize_filename(self,filename):
-        """
-        Removes or replaces characters that are unsafe for filenames.
-        """
-        # Replace spaces with underscores
-        filename = filename.replace(' ', '_')
-        # Remove any character that is not alphanumeric, underscore, hyphen, or dot
-        filename = re.sub(r'[^\w\-_\.]', '', filename)
-        return filename
 
     def has_audio(self,video_file):
         """
@@ -270,7 +124,6 @@ class Command(BaseCommand):
         except subprocess.CalledProcessError as e:
             logging.error(f"FFprobe error when checking audio for {video_file}: {e.stderr.strip()}")
             return False
-
 
     def check_video_format_resolution(self,video_file):
         """
@@ -309,101 +162,6 @@ class Command(BaseCommand):
             logging.error(f"FFprobe error for {video_file}: {e.stderr.strip()}")
             return None, None
 
-    # def concatenate_videos(self,video, per_vid):
-    #     """
-    #     Concatenates multiple video files into a single output file using FFmpeg's concat filter.
-    #     """
-    #     merge_task=self.merge_task
-        
-    #     input_files=[video.processed_file.url,merge_task.large_videos.all()[0].processed_file.url]
-    #     final_output_name = f"{os.path.splitext(video.video_file.name.split('/')[-1])[0]}_{os.path.splitext(merge_task.large_videos.all()[0].video_file.name.split('/')[-1])[0]}.mp4"
-
-    #     # final_output_name=f"{os.path.splitext(video.name.split('/')[-1])[0]}_{os.path.splitext(merge_task.large_videos.all()[0].video_file.name.split('/')[-1])[0]}"
-    #     with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as temp_file:
-    #         output_file = temp_file.name 
-    #         logging.info(f"Concatenating videos into: {output_file}")
-    #         if len(input_files) < 2:
-    #             logging.error("Need at least two files to concatenate")
-    #             return
-
-    #         # Build FFmpeg command with filter_complex 'concat'
-    #         command = ['ffmpeg', '-y']
-    #         for input_file in input_files:
-    #             command += ['-i', input_file]
-
-    #         # Construct the filter_complex string
-    #         filter_complex = ""
-    #         for i in range(len(input_files)):
-    #             filter_complex += f"[{i}:v][{i}:a]"
-    #         filter_complex += f"concat=n={len(input_files)}:v=1:a=1[outv][outa]"
-
-    #         command += [
-    #             '-filter_complex', filter_complex,
-    #             '-map', '[outv]',
-    #             '-map', '[outa]',
-    #             '-c:v', 'libx264',
-    #             '-preset', 'superfast',
-    #             '-c:a', 'aac',
-    #             '-pix_fmt', 'yuv420p',
-    #             '-r', '30',
-    #             output_file
-    #         ]
-
-    #         logging.debug(f"Concatenate command: {' '.join(command)}")
-    #         process = subprocess.Popen(
-    #             command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True
-    #         )
-
-    #         frames_processed = 0
-    #         prev_frames_processed = 0
-    #         ffmpeg_error = ""
-    #         while True:
-    #             output = process.stderr.readline()
-    #             if output == '' and process.poll() is not None:
-    #                 break
-    #             if output:
-    #                 logging.debug(output.strip())
-    #                 ffmpeg_error += output
-    #                 match = re.search(r"frame=\s*(\d+)", output)
-    #                 if match:
-    #                     frames_processed = int(match.group(1))
-    #                     if frames_processed - prev_frames_processed >= 150:
-    #                         if merge_task:
-    #                             merge_task.total_frames_done += (frames_processed - prev_frames_processed)
-    #                             merge_task.track_progress(0)
-    #                             merge_task.save()
-    #                         prev_frames_processed = frames_processed
-                            
-
-    #         return_code = process.wait()
-    #         if return_code != 0:
-    #             logging.error(f"FFmpeg failed during concatenation of {output_file}.")
-    #             logging.error(f"FFmpeg error output: {ffmpeg_error}")
-    #             # Remove the invalid output file if FFmpeg failed
-    #             if os.path.exists(output_file):
-    #                 os.remove(output_file)
-    #                 logging.info(f"Removed invalid concatenated file: {output_file}")
-    #             # return self.concatenate_videos(video,per_vid)
-
-    #         if merge_task:
-    #             merge_task.total_frames_done += (frames_processed - prev_frames_processed)
-    #             merge_task.save()
-                
-    #         if output_file:
-    #             with open(output_file, "rb") as output_video_file:
-    #                 file_content = output_video_file.read()
-
-    #                 link = VideoLinks.objects.create(
-    #                     merge_task=merge_task
-    #                 )
-    #                 link.video_file.save(final_output_name, ContentFile(file_content))
-
-
-    #         import time
-    #         time.sleep(5)
-    #         logging.info(f"Finished concatenating: {output_file}")
-    #         merge_task.track_progress(per_vid)
-        
     def concatenate_videos(self, video, per_vid):
             """
             Concatenates multiple video files into a single output file using FFmpeg's concat filter.
@@ -501,7 +259,7 @@ class Command(BaseCommand):
 
             except FileNotFoundError as e:
                 logging.warning(f"FileNotFoundError encountered: {e}. Retrying...")
-                return self.concatenate_videos(video, per_vid)
+                # return self.concatenate_videos(video, per_vid)
 
             except Exception as e:
                 logging.error(f"An unexpected error occurred: {e}")
@@ -643,7 +401,6 @@ class Command(BaseCommand):
             region_name=settings.AWS_S3_REGION_NAME
         )
         return s3_client
-
         
     def generate_presigned_url(self,bucket_name, object_key, expiration=3600):
         """
@@ -664,85 +421,4 @@ class Command(BaseCommand):
             print(f"Error generating presigned URL: {e}")
             return None
         
-
-    def download_from_s3(self,file_key, local_file_path):
-
-        """
-        Download a file from S3 and save it to a local path.
-
-        Args:
-            file_key (str): The S3 object key (file path in the bucket).
-            local_file_path (str): The local file path where the file will be saved.
-
-        Returns:
-            bool: True if successful, False otherwise.
-            
-        """
-        AWS_ACCESS_KEY_ID = settings.AWS_ACCESS_KEY_ID
-        bucket_name = settings.AWS_STORAGE_BUCKET_NAME
-        aws_secret = settings.AWS_SECRET_ACCESS_KEY
-        s3 = boto3.client(
-            "s3", aws_access_key_id=AWS_ACCESS_KEY_ID, aws_secret_access_key=aws_secret
-        )
-
-        try:
-            # Download the file from the bucket using its S3 object key
-            response = s3.get_object(Bucket=bucket_name, Key=file_key)
-            object_content = response["Body"].read()
-            logging.info(f"Downloaded {file_key} from S3 to {local_file_path}")
-            return object_content
-        except Exception as e:
-            logging.error(f"Failed to download {file_key} from S3: {e}")
-            return False
-        
-
-    def download_video_from_s3(self,s3_url, local_folder):
-        """
-        Download an S3 file to a local folder using a presigned URL.
-        s3_url: The presigned URL to download the file from S3
-        local_folder: The local folder to save the downloaded file
-        """
-        # Parse the S3 URL
-        parsed_url = urlparse(s3_url)
-        bucket_name = parsed_url.netloc.split('.')[0]  # Extract the bucket name
-        bucket_name = bucket_name if bucket_name else settings.AWS_STORAGE_BUCKET_NAME
-        object_key = parsed_url.path.lstrip('/')       # Extract the object key
-
-        # Generate a presigned URL
-        presigned_url = self.generate_presigned_url(bucket_name, object_key)
-        if not presigned_url:
-            print("Failed to generate a presigned URL")
-            return
-
-        # Fetch the file and save it locally
-        local_file_path = os.path.join(local_folder, os.path.basename(object_key))
-        try:
-            response = requests.get(presigned_url, stream=True)
-            if response.status_code == 200:
-                with open(local_file_path, 'wb') as file:
-                    for chunk in response.iter_content(chunk_size=1024):
-                        file.write(chunk)
-                print(f"File downloaded successfully: {local_file_path}")
-            else:
-                print(f"Failed to download file. Status code: {response.status_code}")
-        except Exception as e:
-            print(f"Error downloading the file: {e}")
-
-
-    def get_file_names(self,s3_urls):
-        """
-        Extracts meaningful names from a list of S3 keys or URLs.
-
-        Args:
-            s3_urls (list): List of S3 URLs or keys.
-
-        Returns:
-            list: List of extracted names without extensions.
-        """
-        names = []
-        for s3_url in s3_urls:
-            parsed_url = urlparse(s3_url)
-            filename = os.path.basename(parsed_url.path)  
-            names.append(os.path.splitext(filename)[0])  
-        return names
 
