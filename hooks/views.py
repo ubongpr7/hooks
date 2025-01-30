@@ -102,6 +102,8 @@ def upload_hook(request):
 #       'aspect_ratio': aspect_ratio,
 #     }
 #   )
+modal.config.token_id = os.getenv("MODAL_TOKEN_ID")
+modal.config.token_secret = os.getenv("MODAL_TOKEN_SECRET")
 
 @login_required
 def processing(request, task_id, aspect_ratio):
@@ -118,9 +120,9 @@ def processing(request, task_id, aspect_ratio):
         modal_call = process_hook.spawn(task_id)
         
         # Store Modal call ID with your task (add field to Hook model)
-        hook = Hook.objects.get(id=task_id)
-        hook.modal_call_id = modal_call.object_id
-        hook.save()
+        # hook = Hook.objects.get(id=task_id)
+        # hook.modal_call_id = modal_call.object_id
+        # hook.save()
 
     except Exception as e:
         logger.error(f"Failed to start Modal job: {e}")
@@ -140,7 +142,6 @@ def processing(request, task_id, aspect_ratio):
 def check_task_status(request, task_id):
   task = get_object_or_404(Hook, id=task_id)
   videos=[video.video_file.url for video in task.video_links.all() if video.video_file ]
-  # Return task status and video links (if processing is completed)
   return JsonResponse(
     {
       'status': task.status,
