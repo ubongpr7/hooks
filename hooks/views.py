@@ -114,7 +114,7 @@ def processing(request, task_id, aspect_ratio):
 
     try:
         # Get the Modal function reference
-        process_hook = modal.Function.lookup("django-hook-processor", "process_hook")
+        process_hook = modal.Function.lookup("hook-processor", "process_hook")
         
         modal_call = process_hook.spawn(task_id)
         
