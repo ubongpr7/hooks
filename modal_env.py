@@ -1,7 +1,11 @@
+import os
 import modal
+modal.config.token_id = os.getenv("MODAL_TOKEN_ID")
+modal.config.token_secret = os.getenv("MODAL_TOKEN_SECRET")
+
 image = modal.Image.from_registry("nas415/hooks:latest")
 app = modal.App(
-    name="django-hook-processor",
+    name="hook-processor",
     image=image
 )
 

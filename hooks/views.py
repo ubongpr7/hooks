@@ -116,7 +116,6 @@ def processing(request, task_id, aspect_ratio):
         # Get the Modal function reference
         process_hook = modal.Function.lookup("django-hook-processor", "process_hook")
         
-        # Start the Modal job asynchronously
         modal_call = process_hook.spawn(task_id)
         
         # Store Modal call ID with your task (add field to Hook model)
