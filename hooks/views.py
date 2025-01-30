@@ -2,6 +2,7 @@ import logging
 import tempfile
 import os
 import shutil
+from venv import logger
 from django.conf import settings
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
@@ -20,7 +21,7 @@ import io
 import requests
 from .tools.spreadsheet_extractor import fetch_google_sheet_data
 from django.core.management import call_command
-
+import modal
 logging.basicConfig(level=logging.DEBUG)
         
 
@@ -67,42 +68,73 @@ def upload_hook(request):
   return render(request, 'upload_hook.html', {'form': form, 'hook': hook})
 
 
-@login_required
-def processing(request, task_id, aspect_ratio):
-  def run_process_command():
-    try:
-        call_command("process_hook", task_id)
-    except Exception as e:
-        print(f"Error processing video: {e}")
+# @login_required
+# def processing(request, task_id, aspect_ratio):
+#   def run_process_command():
+#     try:
+#         call_command("process_hook", task_id)
+#     except Exception as e:
+#         print(f"Error processing video: {e}")
 
-  # Check if the user has enough credits
-  user_sub = request.user.subscription
-  if not user_sub or user_sub.hooks <= 0:
-    # You can change the url below to the stripe URL
-    # return redirect('hooks:no_credits')  # Redirect to an error page or appropriate view
-    return HttpResponse(
-      "You don't have enough credits, buy and try again!", status=404
-    )
+#   # Check if the user has enough credits
+#   user_sub = request.user.subscription
+#   if not user_sub or user_sub.hooks <= 0:
+#     # You can change the url below to the stripe URL
+#     # return redirect('hooks:no_credits')  # Redirect to an error page or appropriate view
+#     return HttpResponse(
+#       "You don't have enough credits, buy and try again!", status=404
+#     )
   
 
-  try:
-      username = str(request.user.username).split("@")[0] if request.user.username else request.user.first_name
-  except:
-      username = request.user.first_name
+#   try:
+#       username = str(request.user.username).split("@")[0] if request.user.username else request.user.first_name
+#   except:
+#       username = request.user.first_name
 
 
-  thread = threading.Thread(target=run_process_command)
-  thread.start()
+#   thread = threading.Thread(target=run_process_command)
+#   thread.start()
 
 
-  return render(
-    request, 'processing.html', {
-      'task_id': task_id,
-      'aspect_ratio': aspect_ratio,
-    }
-  )
+#   return render(
+#     request, 'processing.html', {
+#       'task_id': task_id,
+#       'aspect_ratio': aspect_ratio,
+#     }
+#   )
 
+@login_required
+def processing(request, task_id, aspect_ratio):
+    # Check credits first
+    user_sub = request.user.subscription
+    if not user_sub or user_sub.hooks <= 0:
+        return HttpResponse("You don't have enough credits, buy and try again!", status=404)
 
+    try:
+        # Get the Modal function reference
+        process_hook = modal.Function.lookup("django-hook-processor", "process_hook")
+        
+        # Start the Modal job asynchronously
+        modal_call = process_hook.spawn(task_id)
+        
+        # Store Modal call ID with your task (add field to Hook model)
+        hook = Hook.objects.get(id=task_id)
+        hook.modal_call_id = modal_call.object_id
+        hook.save()
+
+    except Exception as e:
+        logger.error(f"Failed to start Modal job: {e}")
+        return HttpResponse("Processing failed to start", status=500)
+
+    return render(
+        request, 
+        'processing.html', 
+        {
+            'task_id': task_id,
+            'aspect_ratio': aspect_ratio,
+            'modal_call_id': modal_call.object_id  # Pass to frontend for status checks
+        }
+    )
 
 @login_required
 def check_task_status(request, task_id):
@@ -119,6 +151,7 @@ def check_task_status(request, task_id):
   
   
   
+
 
 def processing_successful(request, task_id):
   """View to display processing successful page."""
