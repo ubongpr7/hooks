@@ -22,6 +22,20 @@ from hooks.tools.spreadsheet_extractor import fetch_google_sheet_data, extract_w
 from hooks.tools.audio_processors import process_audios
 from hooks.tools.video_processors import process_audio_on_videos
 
+import os
+import sys
+import modal
+from django.core.management import call_command
+
+modal.config.token_id = os.getenv("MODAL_TOKEN_ID")
+modal.config.token_secret = os.getenv("MODAL_TOKEN_SECRET")
+
+image = modal.Image.from_registry("nas415/hooks:latest")
+app = modal.App(
+    name="hook-processor-2",
+    image=image
+)
+
 
 logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -287,7 +301,7 @@ class Command(BaseCommand):
 
         video_links, credits_used = self.process(params)
         return video_links, credits_used
-   
+    @app.function(gpu=modal.gpu.A10G(),)
     def background_processing(self):
         """Background processing for the given task."""
         hook=self.hook

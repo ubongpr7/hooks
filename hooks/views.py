@@ -69,68 +69,70 @@ def upload_hook(request):
   return render(request, 'upload_hook.html', {'form': form, 'hook': hook})
 
 
-# @login_required
-# def processing(request, task_id, aspect_ratio):
-#   def run_process_command():
-#     try:
-#         call_command("process_hook", task_id)
-#     except Exception as e:
-#         print(f"Error processing video: {e}")
-
-#   # Check if the user has enough credits
-#   user_sub = request.user.subscription
-#   if not user_sub or user_sub.hooks <= 0:
-#     # You can change the url below to the stripe URL
-#     # return redirect('hooks:no_credits')  # Redirect to an error page or appropriate view
-#     return HttpResponse(
-#       "You don't have enough credits, buy and try again!", status=404
-#     )
-  
-
-#   try:
-#       username = str(request.user.username).split("@")[0] if request.user.username else request.user.first_name
-#   except:
-#       username = request.user.first_name
-
-
-#   thread = threading.Thread(target=run_process_command)
-#   thread.start()
-
-
-#   return render(
-#     request, 'processing.html', {
-#       'task_id': task_id,
-#       'aspect_ratio': aspect_ratio,
-#     }
-#   )
-modal.config.token_id = os.getenv("MODAL_TOKEN_ID")
-modal.config.token_secret = os.getenv("MODAL_TOKEN_SECRET")
-
 @login_required
 def processing(request, task_id, aspect_ratio):
-    # Check credits first
-    user_sub = request.user.subscription
-    if not user_sub or user_sub.hooks <= 0:
-        return HttpResponse("You don't have enough credits, buy and try again!", status=404)
-
+  def run_process_command():
     try:
-        process_hook = modal.Function.lookup("hook-processor", "process_hook")
-        
-        modal_call = process_hook.spawn(task_id)
-
+        call_command("process_hook", task_id)
     except Exception as e:
-        logger.error(f"Failed to start Modal job: {e}")
-        return HttpResponse("Processing failed to start", status=500)
+        print(f"Error processing video: {e}")
 
-    return render(
-        request, 
-        'processing.html', 
-        {
-            'task_id': task_id,
-            'aspect_ratio': aspect_ratio,
-            # 'modal_call_id': modal_call.object_id  # Pass to frontend for status checks
-        }
+  # Check if the user has enough credits
+  user_sub = request.user.subscription
+  if not user_sub or user_sub.hooks <= 0:
+    # You can change the url below to the stripe URL
+    # return redirect('hooks:no_credits')  # Redirect to an error page or appropriate view
+    return HttpResponse(
+      "You don't have enough credits, buy and try again!", status=404
     )
+  
+
+  try:
+      username = str(request.user.username).split("@")[0] if request.user.username else request.user.first_name
+  except:
+      username = request.user.first_name
+
+
+  thread = threading.Thread(target=run_process_command)
+  thread.start()
+
+
+  return render(
+    request, 'processing.html', {
+      'task_id': task_id,
+      'aspect_ratio': aspect_ratio,
+    }
+  )
+
+
+# modal.config.token_id = os.getenv("MODAL_TOKEN_ID")
+# modal.config.token_secret = os.getenv("MODAL_TOKEN_SECRET")
+
+# @login_required
+# def processing(request, task_id, aspect_ratio):
+#     # Check credits first
+#     user_sub = request.user.subscription
+#     if not user_sub or user_sub.hooks <= 0:
+#         return HttpResponse("You don't have enough credits, buy and try again!", status=404)
+
+#     try:
+#         process_hook = modal.Function.lookup("hook-processor", "process_hook")
+        
+#         modal_call = process_hook.spawn(task_id)
+
+#     except Exception as e:
+#         logger.error(f"Failed to start Modal job: {e}")
+#         return HttpResponse("Processing failed to start", status=500)
+
+#     return render(
+#         request, 
+#         'processing.html', 
+#         {
+#             'task_id': task_id,
+#             'aspect_ratio': aspect_ratio,
+#             # 'modal_call_id': modal_call.object_id  # Pass to frontend for status checks
+#         }
+#     )
 
 
 
