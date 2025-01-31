@@ -153,7 +153,7 @@ def processing(request, task_id, aspect_ratio):
 
     try:
         result = subprocess.run(
-            ["modal", "run", "modal_env.py",  "--task-id", str(task_id)],
+            ["modal", "run","hooks_app/modal_env.py",  "--task-id", str(task_id)],
             capture_output=True,
             text=True
         )
