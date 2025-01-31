@@ -89,7 +89,7 @@ def upload_hook(request):
 
   
 
-#   thread = threading.Thread(target=run_process_command)
+#   thread = threading.Thread(target=run_modal)
 #   thread.start()
 
 
@@ -117,14 +117,17 @@ def processing(request, task_id, aspect_ratio):
     user_sub = request.user.subscription
     if not user_sub or user_sub.hooks <= 0:
         return HttpResponse("You don't have enough credits, buy and try again!", status=404)
+    def run_modal():
+      try:
+          process_hook = modal.Function.lookup("hook-processor-3", "process_hook")
+          process_hook.remote(task_id)
 
-    try:
-        process_hook = modal.Function.lookup("hook-processor-3", "process_hook")
-        process_hook.remote(task_id)
-
-    except Exception as e:
-        logger.error(f"Failed to start Modal job: {e}")
-        return HttpResponse("Processing failed to start", status=500)
+      except Exception as e:
+          logger.error(f"Failed to start Modal job: {e}")
+          return HttpResponse("Processing failed to start", status=500)
+      
+    thread = threading.Thread(target=run_modal)
+    thread.start()
 
     return render(
         request, 

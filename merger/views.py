@@ -1,5 +1,6 @@
 # merger/views.py
 import os
+from venv import logger
 import zipfile
 import io
 import logging
@@ -106,8 +107,17 @@ def processing(request, task_id):
     modal.config.token_id = os.getenv("MODAL_TOKEN_ID")
     modal.config.token_secret = os.getenv("MODAL_TOKEN_SECRET")
 
-    process_hook = modal.Function.lookup("hook-processor-3", "merge_hook")
-    process_hook.remote(task_id)
+    def run_modal():
+      try:
+          process_hook = modal.Function.lookup("hook-processor-3", "merge_hook")
+          process_hook.remote(task_id)
+
+      except Exception as e:
+          logger.error(f"Failed to start Modal job: {e}")
+          return HttpResponse("Processing failed to start", status=500)
+      
+    thread = threading.Thread(target=run_modal)
+    thread.start()
 
     logging.info(f"Used {merge_credits_used} merge credits")
 
