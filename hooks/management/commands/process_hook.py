@@ -25,7 +25,6 @@ from hooks.tools.video_processors import process_audio_on_videos
 import os
 import sys
 import modal
-from django.core.management import call_command
 
 modal.config.token_id = os.getenv("MODAL_TOKEN_ID")
 modal.config.token_secret = os.getenv("MODAL_TOKEN_SECRET")
@@ -301,7 +300,7 @@ class Command(BaseCommand):
 
         video_links, credits_used = self.process(params)
         return video_links, credits_used
-    @app.function(gpu=modal.gpu.A10G(),)
+    @app.cls(gpu=modal.gpu.A10G(),)
     def background_processing(self):
         """Background processing for the given task."""
         hook=self.hook
