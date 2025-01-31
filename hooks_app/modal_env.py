@@ -18,7 +18,6 @@ app = modal.App(
     gpu=modal.gpu.A10G(),  
     timeout=3600
 )
-
 def process_hook(task_id: int):
     sys.path.insert(0, "/app")
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'hooks_app.settings')
@@ -29,6 +28,10 @@ def process_hook(task_id: int):
 
 
 
+@app.function(
+    gpu=modal.gpu.A10G(),  
+    timeout=3600
+)
 def merge_hook(task_id: int):
     
     sys.path.insert(0, "/app")
