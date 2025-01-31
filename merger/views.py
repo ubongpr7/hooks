@@ -100,14 +100,15 @@ def processing(request, task_id):
         return HttpResponse(
             "You don't have enough merge credits, buy and try again!", status=403
         )
+    
+    request.user.subscription.merge_credits -= merge_credits_used
+    request.user.subscription.save()
     modal.config.token_id = os.getenv("MODAL_TOKEN_ID")
     modal.config.token_secret = os.getenv("MODAL_TOKEN_SECRET")
 
     process_hook = modal.Function.lookup("hook-processor-3", "merge_hook")
     process_hook.remote(task_id)
 
-    request.user.subscription.merge_credits -= merge_credits_used
-    request.user.subscription.save()
     logging.info(f"Used {merge_credits_used} merge credits")
 
     return render(request, 'merger/processing.html', {'task_id': task_id})
