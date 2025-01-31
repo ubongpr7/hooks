@@ -22,6 +22,7 @@ def process_hook(task_id: int):
     import django
     # sys.path.append(os.path.dirname(os.path.abspath(__file__)))  
     # os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'hooks_app.settings')
+    sys.path.insert(0, "/app")
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'hooks_app.settings')
 
     django.setup()
