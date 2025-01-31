@@ -45,7 +45,7 @@ logging.basicConfig(
 
 canceled_tasks = set()
 
-
+@app.cls(gpu=modal.gpu.A10G(),)
 class Command(BaseCommand):
     help = "Process video files based on TextFile model"
 
@@ -300,7 +300,6 @@ class Command(BaseCommand):
 
         video_links, credits_used = self.process(params)
         return video_links, credits_used
-    @app.cls(gpu=modal.gpu.A10G(),)
     def background_processing(self):
         """Background processing for the given task."""
         hook=self.hook
