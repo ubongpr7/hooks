@@ -16,11 +16,12 @@ app = modal.App(
     gpu=modal.gpu.A10G(),  
     timeout=3600
 )
+
 def process_hook(task_id: int):
     import os
     import django
-    
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'hooks_app.settings')
+    # sys.path.append(os.path.dirname(os.path.abspath(__file__)))  
+    # os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'hooks_app.settings')
     django.setup()
 
     # from hooks.management.commands.process_hook import Command
