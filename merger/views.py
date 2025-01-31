@@ -84,15 +84,17 @@ def processing(request, task_id):
     """
     try:
         merge_task = MergeTask.objects.get(id=task_id)
-        merge_task.total_frames_done=0
-        merge_task.status='processing'
-        merge_task.total_frames_done=0
-        merge_task.percent_done=0
-        merge_task.progress='0'
-        merge_task.save()
-        if merge_task.video_links.all():
-            for link in merge_task.video_links.all():
-                link.delete()
+        if not merge_task.status == 'processing':
+            merge_task.total_frames_done=0
+
+            merge_task.status='processing'
+            merge_task.total_frames_done=0
+            merge_task.percent_done=0
+            merge_task.progress='0'
+            merge_task.save()
+            if merge_task.video_links.all():
+                for link in merge_task.video_links.all():
+                    link.delete()
     except MergeTask.DoesNotExist:
         return HttpResponse("Task not found.", status=404)
 
