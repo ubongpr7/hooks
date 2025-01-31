@@ -26,6 +26,15 @@ import os
 import sys
 import modal
 
+logging.basicConfig(
+    level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s"
+)
+
+
+
+
+canceled_tasks = set()
+
 modal.config.token_id = os.getenv("MODAL_TOKEN_ID")
 modal.config.token_secret = os.getenv("MODAL_TOKEN_SECRET")
 
@@ -36,16 +45,7 @@ app = modal.App(
 )
 
 
-logging.basicConfig(
-    level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s"
-)
-
-
-
-
-canceled_tasks = set()
-
-@app.cls(gpu=modal.gpu.A10G(),)
+# @app.cls(gpu=modal.gpu.A10G(),)
 class Command(BaseCommand):
     help = "Process video files based on TextFile model"
 

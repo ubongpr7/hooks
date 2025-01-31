@@ -69,113 +69,69 @@ def upload_hook(request):
   return render(request, 'upload_hook.html', {'form': form, 'hook': hook})
 
 
-@login_required
-def processing(request, task_id, aspect_ratio):
-  def run_process_command():
-    try:
-        call_command("process_hook", task_id)
-    except Exception as e:
-        print(f"Error processing video: {e}")
+# @login_required
+# def processing(request, task_id, aspect_ratio):
+#   def run_process_command():
+#     try:
+#         call_command("process_hook", task_id)
+#     except Exception as e:
+#         print(f"Error processing video: {e}")
 
-  # Check if the user has enough credits
-  user_sub = request.user.subscription
-  if not user_sub or user_sub.hooks <= 0:
-    # You can change the url below to the stripe URL
-    # return redirect('hooks:no_credits')  # Redirect to an error page or appropriate view
-    return HttpResponse(
-      "You don't have enough credits, buy and try again!", status=404
-    )
+#   # Check if the user has enough credits
+#   user_sub = request.user.subscription
+#   if not user_sub or user_sub.hooks <= 0:
+#     # You can change the url below to the stripe URL
+#     # return redirect('hooks:no_credits')  # Redirect to an error page or appropriate view
+#     return HttpResponse(
+#       "You don't have enough credits, buy and try again!", status=404
+#     )
   
 
-  try:
-      username = str(request.user.username).split("@")[0] if request.user.username else request.user.first_name
-  except:
-      username = request.user.first_name
+  
+
+#   thread = threading.Thread(target=run_process_command)
+#   thread.start()
 
 
-  thread = threading.Thread(target=run_process_command)
-  thread.start()
+#   return render(
+#     request, 'processing.html', {
+#       'task_id': task_id,
+#       'aspect_ratio': aspect_ratio,
+#     }
+#   )
 
 
-  return render(
-    request, 'processing.html', {
-      'task_id': task_id,
-      'aspect_ratio': aspect_ratio,
-    }
-  )
+modal.config.token_id = os.getenv("MODAL_TOKEN_ID")
+modal.config.token_secret = os.getenv("MODAL_TOKEN_SECRET")
+
+@login_required
+def processing(request, task_id, aspect_ratio):
+    # Check credits first
+    user_sub = request.user.subscription
+    if not user_sub or user_sub.hooks <= 0:
+        return HttpResponse("You don't have enough credits, buy and try again!", status=404)
+
+    try:
+        process_hook = modal.Function.lookup("hook-processor", "process_hook")
+        # f = modal.Function.from_name("my-shared-app", "square")
+        process_hook.remote(task_id)
+        # modal_call = process_hook.spawn(task_id)
+
+    except Exception as e:
+        logger.error(f"Failed to start Modal job: {e}")
+        return HttpResponse("Processing failed to start", status=500)
+
+    return render(
+        request, 
+        'processing.html', 
+        {
+            'task_id': task_id,
+            'aspect_ratio': aspect_ratio,
+            # 'modal_call_id': modal_call.object_id  # Pass to frontend for status checks
+        }
+    )
 
 
-# modal.config.token_id = os.getenv("MODAL_TOKEN_ID")
-# modal.config.token_secret = os.getenv("MODAL_TOKEN_SECRET")
-
-# @login_required
-# def processing(request, task_id, aspect_ratio):
-#     # Check credits first
-#     user_sub = request.user.subscription
-#     if not user_sub or user_sub.hooks <= 0:
-#         return HttpResponse("You don't have enough credits, buy and try again!", status=404)
-
-#     try:
-#         process_hook = modal.Function.lookup("hook-processor", "process_hook")
-        
-#         modal_call = process_hook.spawn(task_id)
-
-#     except Exception as e:
-#         logger.error(f"Failed to start Modal job: {e}")
-#         return HttpResponse("Processing failed to start", status=500)
-
-#     return render(
-#         request, 
-#         'processing.html', 
-#         {
-#             'task_id': task_id,
-#             'aspect_ratio': aspect_ratio,
-#             # 'modal_call_id': modal_call.object_id  # Pass to frontend for status checks
-#         }
-#     )
-
-
-
-# import subprocess
-# import logging
-# from django.shortcuts import render
-# from django.http import HttpResponse
-# from django.contrib.auth.decorators import login_required
-# from hooks.models import Hook
-
-# logger = logging.getLogger(__name__)
-
-# @login_required
-# def processing(request, task_id, aspect_ratio):
-#     """Start background processing using Modal via subprocess (not recommended)"""
-#     user_sub = request.user.subscription
-#     if not user_sub or user_sub.hooks <= 0:
-#         return HttpResponse("You don't have enough credits, buy and try again!", status=404)
-
-#     try:
-#         result = subprocess.run(
-#             ["modal", "run","modal_env.py",  "--task-id", str(task_id)],
-#             capture_output=True,
-#             text=True
-#         )
-        
-#         if result.returncode != 0:
-#             raise Exception(result.stderr)
-        
-#         logger.info(f"Modal job started successfully: {result.stdout}")
-
-#     except Exception as e:
-#         logger.error(f"Failed to start Modal job: {e}")
-#         return HttpResponse("Processing failed to start", status=500)
-
-#     return render(
-#         request, 
-#         'processing.html', 
-#         {
-#             'task_id': task_id,
-#             'aspect_ratio': aspect_ratio,
-#         }
-#     )
 
 @login_required
 def check_task_status(request, task_id):
