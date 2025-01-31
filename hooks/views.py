@@ -8,7 +8,6 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 import boto3
-from modal_env import process_hook
 
 from .forms import HookForm
 
@@ -108,12 +107,14 @@ modal.config.token_secret = os.getenv("MODAL_TOKEN_SECRET")
 
 @login_required
 def processing(request, task_id, aspect_ratio):
+    # Check credits first
     user_sub = request.user.subscription
     if not user_sub or user_sub.hooks <= 0:
         return HttpResponse("You don't have enough credits, buy and try again!", status=404)
 
     try:
-        # process_hook = modal.Function.lookup("hook-processor", "process_hook")
+        # Get the Modal function reference
+        process_hook = modal.Function.lookup("hook-processor", "process_hook")
         
         modal_call = process_hook.spawn(task_id)
         
