@@ -20,7 +20,7 @@ app = modal.App(
 def process_hook(task_id: int):
     import os
     import django
-    sys.path.append(os.path.dirname(os.path.abspath(__file__)))  
+    # sys.path.append(os.path.dirname(os.path.abspath(__file__)))  
     # os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'hooks_app.settings')
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'hooks_app.settings')
 
