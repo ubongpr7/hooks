@@ -20,7 +20,7 @@ def process_hook(task_id: int):
     import os
     import django
     
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', './core.settings')
     django.setup()
 
     # from hooks.management.commands.process_hook import Command
