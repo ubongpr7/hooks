@@ -1,4 +1,5 @@
 import os
+import sys
 import modal
 from django.core.management import call_command
 
@@ -25,6 +26,22 @@ def process_hook(task_id: int):
     # from hooks.management.commands.process_hook import Command
     call_command("process_hook", task_id)
 
+
+if __name__ == "__main__":
+    # Get task_id from command-line arguments
+    if len(sys.argv) < 2:
+        print("Error: Missing task_id argument")
+        sys.exit(1)
+
+    try:
+        task_id = int(sys.argv[1])
+    except ValueError:
+        print("Error: task_id must be an integer")
+        sys.exit(1)
+
+    # Run the function inside Modal
+    with app.run():
+        process_hook.remote(task_id)
     
 
 
