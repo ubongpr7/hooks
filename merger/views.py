@@ -103,7 +103,7 @@ def processing(request, task_id):
     modal.config.token_id = os.getenv("MODAL_TOKEN_ID")
     modal.config.token_secret = os.getenv("MODAL_TOKEN_SECRET")
 
-    process_hook = modal.Function.lookup("hook-processor-3", "process_hook")
+    process_hook = modal.Function.lookup("hook-processor-3", "merge_hook")
     process_hook.remote(task_id)
 
     request.user.subscription.merge_credits -= merge_credits_used
