@@ -17,6 +17,7 @@ from utils.utils import  ffprobe_get_frame_count, generate_presigned_url
 from .forms import VideoUploadForm
 from .models import LargeVideo, MergeTask, ShortVideo
 import tempfile
+import modal
 import boto3
 from django.core.management import call_command
 
@@ -99,20 +100,11 @@ def processing(request, task_id):
         return HttpResponse(
             "You don't have enough merge credits, buy and try again!", status=403
         )
-    try:
-        username = str(request.user.username).split("@")[0] if request.user.username else request.user.first_name
-    except:
-        username = request.user.first_name
-    def run_process_command(task_id):
-            try:
-                call_command("merge_videos", task_id)
-            except Exception as e:
-                # Handle the exception as needed (e.g., log it)
-                print(f"Error processing video: {e}")
+    modal.config.token_id = os.getenv("MODAL_TOKEN_ID")
+    modal.config.token_secret = os.getenv("MODAL_TOKEN_SECRET")
 
-
-    thread = threading.Thread(target=run_process_command, args=(task_id,))
-    thread.start()
+    process_hook = modal.Function.lookup("hook-processor-3", "process_hook")
+    process_hook.remote(task_id)
 
     request.user.subscription.merge_credits -= merge_credits_used
     request.user.subscription.save()

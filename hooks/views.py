@@ -101,19 +101,19 @@ def upload_hook(request):
 #   )
 
 
-modal.config.token_id = os.getenv("MODAL_TOKEN_ID")
-modal.config.token_secret = os.getenv("MODAL_TOKEN_SECRET")
+
 
 @login_required
 def processing(request, task_id, aspect_ratio):
     hook = Hook.objects.get(id=task_id)
+    modal.config.token_id = os.getenv("MODAL_TOKEN_ID")
+    modal.config.token_secret = os.getenv("MODAL_TOKEN_SECRET")
     hook.status='processing'
     hook.progress='0'
     hook.save()
     if hook.video_links.all():
         for link in hook.video_links.all():
             link.delete()
-    # Check credits first
     user_sub = request.user.subscription
     if not user_sub or user_sub.hooks <= 0:
         return HttpResponse("You don't have enough credits, buy and try again!", status=404)

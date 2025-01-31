@@ -2,7 +2,8 @@ import os
 import sys
 import modal
 from django.core.management import call_command
-
+import os
+import django
 modal.config.token_id = os.getenv("MODAL_TOKEN_ID")
 modal.config.token_secret = os.getenv("MODAL_TOKEN_SECRET")
 
@@ -18,10 +19,20 @@ app = modal.App(
 )
 
 def process_hook(task_id: int):
-    import os
-    import django
-    # sys.path.append(os.path.dirname(os.path.abspath(__file__)))  
-    # os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'hooks_app.settings')
+    sys.path.insert(0, "/app")
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'hooks_app.settings')
+
+    django.setup()
+
+    call_command("process_hook", task_id)
+
+
+@app.function(
+    gpu=modal.gpu.A10G(),  
+    timeout=3600
+)
+def merge_hook(task_id: int):
+    
     sys.path.insert(0, "/app")
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'hooks_app.settings')
 

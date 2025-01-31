@@ -1,6 +1,8 @@
 import os
 import sys
 import modal
+import django
+import os
 from django.core.management import call_command
 
 modal.config.token_id = os.getenv("MODAL_TOKEN_ID")
@@ -18,36 +20,22 @@ app = modal.App(
 )
 
 def process_hook(task_id: int):
-    import os
-    import django
-    # sys.path.append(os.path.dirname(os.path.abspath(__file__)))  
-    # os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'hooks_app.settings')
     sys.path.insert(0, "/app")
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'hooks_app.settings')
 
     django.setup()
 
-    # from hooks.management.commands.process_hook import Command
     call_command("process_hook", task_id)
 
 
-# if __name__ == "__main__":
-#     # Get task_id from command-line arguments
-#     if len(sys.argv) < 2:
-#         print("Error: Missing task_id argument")
-#         sys.exit(1)
 
-#     try:
-#         task_id = int(sys.argv[1])
-#     except ValueError:
-#         print("Error: task_id must be an integer")
-#         sys.exit(1)
-
-#     # Run the function inside Modal
-#     with app.run():
-#         process_hook.remote(task_id)
+def merge_hook(task_id: int):
     
+    sys.path.insert(0, "/app")
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'hooks_app.settings')
 
+    django.setup()
 
+    call_command("merge_videos", task_id)
 
 
