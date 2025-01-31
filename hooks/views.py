@@ -112,7 +112,7 @@ def processing(request, task_id, aspect_ratio):
         return HttpResponse("You don't have enough credits, buy and try again!", status=404)
 
     try:
-        process_hook = modal.Function.lookup("hook-processor", "process_hook")
+        process_hook = modal.Function.lookup("hook-processor-3", "process_hook")
         # f = modal.Function.from_name("my-shared-app", "square")
         process_hook.remote(task_id)
         # modal_call = process_hook.spawn(task_id)

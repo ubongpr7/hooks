@@ -8,7 +8,7 @@ modal.config.token_secret = os.getenv("MODAL_TOKEN_SECRET")
 
 image = modal.Image.from_registry("nas415/hooks:latest")
 app = modal.App(
-    name="hook-processor",
+    name="hook-processor-3",
     image=image
 )
 
