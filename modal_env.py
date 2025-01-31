@@ -1,5 +1,7 @@
 import os
 import modal
+from django.core.management import call_command
+
 modal.config.token_id = os.getenv("MODAL_TOKEN_ID")
 modal.config.token_secret = os.getenv("MODAL_TOKEN_SECRET")
 
@@ -12,7 +14,6 @@ app = modal.App(
 @app.function(
     gpu=modal.gpu.A10G(),  
     timeout=3600
-    # Removed mounts (now handled by add_local_dir)
 )
 def process_hook(task_id: int):
     import os
@@ -21,7 +22,11 @@ def process_hook(task_id: int):
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
     django.setup()
 
-    from hooks.management.commands.process_hook import Command
+    # from hooks.management.commands.process_hook import Command
+    call_command("process_hook", task_id)
+
     
-    command = Command()
-    command.handle(task_id=task_id)
+
+
+
+
