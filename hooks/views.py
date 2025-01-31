@@ -106,6 +106,13 @@ modal.config.token_secret = os.getenv("MODAL_TOKEN_SECRET")
 
 @login_required
 def processing(request, task_id, aspect_ratio):
+    hook = Hook.objects.get(id=task_id)
+    hook.status='processing'
+    hook.progress='0'
+    hook.save()
+    if hook.video_links.all():
+        for link in hook.video_links.all():
+            link.delete()
     # Check credits first
     user_sub = request.user.subscription
     if not user_sub or user_sub.hooks <= 0:
@@ -113,9 +120,7 @@ def processing(request, task_id, aspect_ratio):
 
     try:
         process_hook = modal.Function.lookup("hook-processor-3", "process_hook")
-        # f = modal.Function.from_name("my-shared-app", "square")
         process_hook.remote(task_id)
-        # modal_call = process_hook.spawn(task_id)
 
     except Exception as e:
         logger.error(f"Failed to start Modal job: {e}")

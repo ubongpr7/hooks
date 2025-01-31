@@ -8,7 +8,7 @@ modal.config.token_secret = os.getenv("MODAL_TOKEN_SECRET")
 
 image = modal.Image.from_registry("nas415/hooks:latest")
 app = modal.App(
-    name="hook-processor",
+    name="hook-processor-3",
     image=image
 )
 
@@ -20,8 +20,9 @@ app = modal.App(
 def process_hook(task_id: int):
     import os
     import django
-    sys.path.append(os.path.dirname(os.path.abspath(__file__)))  
+    # sys.path.append(os.path.dirname(os.path.abspath(__file__)))  
     # os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'hooks_app.settings')
+    sys.path.insert(0, "/app")
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'hooks_app.settings')
 
     django.setup()
